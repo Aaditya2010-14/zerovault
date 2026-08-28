@@ -1,0 +1,2 @@
+track = "E"
+pitch = "Encrypted password vault, TOTP 2FA, secrets scanner, and web dashboard — built entirely on Go 1.27 stdlib crypto primitives."

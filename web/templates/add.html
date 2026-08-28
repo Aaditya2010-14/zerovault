@@ -3,7 +3,7 @@
 <div class="card">
   <form method="post" action="/add">
     <label for="name">Name</label>
-    <input type="text" id="name" name="name" required autofocus>
+    <input type="text" id="name" name="name" pattern="[A-Za-z0-9_-]{1,64}" title="letters, digits, hyphens, underscores only" required autofocus>
 
     <label for="username">Username</label>
     <input type="text" id="username" name="username">

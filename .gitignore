@@ -5,3 +5,8 @@
 *.test
 *.out
 coverage.out
+
+# Hackathon kickoff/instruction docs — not part of the project deliverable.
+claude-code-kickoff-track-e.md
+post-build-instructions.md
+attack-suite-instructions.md

@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -34,6 +35,14 @@ func (s *Server) handleUnlockForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUnlockSubmit(w http.ResponseWriter, r *http.Request) {
+	// Rate limiting: this is the only throttle on master-password guessing
+	// through the web UI (PBKDF2's own cost is the first line of defense).
+	// A global counter is enough here because the threat model treats the
+	// loopback interface as a single trust boundary — see README.
+	if wait := s.unlockLimit.delay(); wait > 0 {
+		time.Sleep(wait)
+	}
+
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
@@ -44,9 +53,11 @@ func (s *Server) handleUnlockSubmit(w http.ResponseWriter, r *http.Request) {
 	if vault.Exists(s.vaultPath) {
 		loaded, err := vault.Load(s.vaultPath, password)
 		if err != nil {
+			s.unlockLimit.recordFailure()
 			s.renderUnlockError(w, "incorrect master password")
 			return
 		}
+		s.unlockLimit.recordSuccess()
 		v = loaded
 	} else {
 		if password == "" || password != r.FormValue("confirm") {
@@ -136,14 +147,20 @@ func (s *Server) handleAddSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := sess.vault.Add(
-		r.FormValue("name"),
-		r.FormValue("username"),
-		r.FormValue("password"),
-		r.FormValue("url"),
-		r.FormValue("notes"),
-	)
-	if err != nil {
+	name := r.FormValue("name")
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+	url := r.FormValue("url")
+	notes := r.FormValue("notes")
+
+	if err := validateAddEntry(name, username, password, url, notes); err != nil {
+		s.render(w, "add", struct {
+			baseData
+		}{baseData{Title: "Add Entry", Authenticated: true, Error: err.Error()}})
+		return
+	}
+
+	if _, err := sess.vault.Add(name, username, password, url, notes); err != nil {
 		s.render(w, "add", struct {
 			baseData
 		}{baseData{Title: "Add Entry", Authenticated: true, Error: err.Error()}})
@@ -151,10 +168,37 @@ func (s *Server) handleAddSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.saveSession(sess); err != nil {
-		http.Error(w, "failed to save vault", http.StatusInternalServerError)
+		s.logger.Error("failed to save vault after add", "error", err)
+		http.Error(w, "an error occurred", http.StatusInternalServerError)
 		return
 	}
 	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+}
+
+// validateAddEntry applies the server-side field limits documented in the
+// threat model, independent of html/template's output-side escaping — this
+// keeps malformed data out of the vault file rather than only neutralizing
+// it at render time.
+func validateAddEntry(name, username, password, url, notes string) error {
+	if err := validateEntryName(name); err != nil {
+		return err
+	}
+	if password == "" {
+		return fmt.Errorf("password cannot be empty")
+	}
+	if err := validateFieldLen("password", password, maxPasswordLen); err != nil {
+		return err
+	}
+	if err := validateFieldLen("username", username, maxUsernameLen); err != nil {
+		return err
+	}
+	if err := validateFieldLen("url", url, maxURLLen); err != nil {
+		return err
+	}
+	if err := validateFieldLen("notes", notes, maxNotesLen); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
@@ -166,7 +210,8 @@ func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.saveSession(sess); err != nil {
-		http.Error(w, "failed to save vault", http.StatusInternalServerError)
+		s.logger.Error("failed to save vault", "error", err)
+		http.Error(w, "an error occurred", http.StatusInternalServerError)
 		return
 	}
 	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
@@ -257,7 +302,17 @@ func (s *Server) handleTOTPAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := sess.vault.AddTOTP(r.FormValue("name"), r.FormValue("secret"), totp.DefaultDigits, totp.DefaultPeriod)
+	name := r.FormValue("name")
+	if err := validateEntryName(name); err != nil {
+		s.render(w, "totp", struct {
+			baseData
+			Entries   []totpRow
+			Remaining int
+		}{baseData: baseData{Title: "TOTP Codes", Authenticated: true, Error: err.Error()}})
+		return
+	}
+
+	_, err := sess.vault.AddTOTP(name, r.FormValue("secret"), totp.DefaultDigits, totp.DefaultPeriod)
 	if err != nil {
 		s.render(w, "totp", struct {
 			baseData
@@ -268,7 +323,8 @@ func (s *Server) handleTOTPAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.saveSession(sess); err != nil {
-		http.Error(w, "failed to save vault", http.StatusInternalServerError)
+		s.logger.Error("failed to save vault", "error", err)
+		http.Error(w, "an error occurred", http.StatusInternalServerError)
 		return
 	}
 	http.Redirect(w, r, "/totp", http.StatusSeeOther)
@@ -283,7 +339,8 @@ func (s *Server) handleTOTPDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.saveSession(sess); err != nil {
-		http.Error(w, "failed to save vault", http.StatusInternalServerError)
+		s.logger.Error("failed to save vault", "error", err)
+		http.Error(w, "an error occurred", http.StatusInternalServerError)
 		return
 	}
 	http.Redirect(w, r, "/totp", http.StatusSeeOther)
@@ -315,10 +372,18 @@ func (s *Server) handleScannerSubmit(w http.ResponseWriter, r *http.Request) {
 		Scanned:  true,
 	}
 
-	findings, err := scanner.ScanDir(path, scanner.Options{})
-	if err != nil {
+	if err := validateScanPath(path); err != nil {
 		data.Error = err.Error()
 		data.Scanned = false
+		s.render(w, "scanner", data)
+		return
+	}
+
+	findings, err := scanner.ScanDir(path, scanner.Options{})
+	if err != nil {
+		data.Error = "an error occurred while scanning"
+		data.Scanned = false
+		s.logger.Error("scan failed", "path", path, "error", err)
 		s.render(w, "scanner", data)
 		return
 	}

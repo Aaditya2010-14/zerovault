@@ -49,6 +49,8 @@ func Run(args []string) int {
 		return cmdScan(args[1:])
 	case "serve":
 		return cmdServe(args[1:])
+	case "attack":
+		return cmdAttack(args[1:])
 	case "help", "-h", "--help":
 		printUsage()
 		return 0
@@ -74,6 +76,7 @@ Usage:
   zerovault totp list                     list all TOTP entries with live codes
   zerovault scan [options] <path>         scan a directory for leaked secrets
   zerovault serve [-addr host:port]       start the web dashboard
+  zerovault attack                        run the built-in security audit (penetration test suite)
 
 Note: flags must come before the entry name.
 

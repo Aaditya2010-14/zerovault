@@ -11,10 +11,11 @@ import (
 
 // Server holds everything the web dashboard's handlers need.
 type Server struct {
-	templates templateSet
-	sessions  *sessionStore
-	vaultPath string
-	logger    *slog.Logger
+	templates   templateSet
+	sessions    *sessionStore
+	vaultPath   string
+	logger      *slog.Logger
+	unlockLimit *unlockLimiter
 }
 
 // NewServer builds a Server that operates on the vault file at vaultPath.
@@ -24,10 +25,11 @@ func NewServer(vaultPath string) (*Server, error) {
 		return nil, err
 	}
 	return &Server{
-		templates: templates,
-		sessions:  newSessionStore(),
-		vaultPath: vaultPath,
-		logger:    slog.Default(),
+		templates:   templates,
+		sessions:    newSessionStore(),
+		vaultPath:   vaultPath,
+		logger:      slog.Default(),
+		unlockLimit: newUnlockLimiter(),
 	}, nil
 }
 
@@ -67,7 +69,7 @@ func (s *Server) Handler() (http.Handler, error) {
 	// every non-safe-method route — this is the stdlib CSRF defense the
 	// kickoff brief calls for, replacing a hand-rolled token scheme.
 	protection := http.NewCrossOriginProtection()
-	return protection.Handler(mux), nil
+	return securityHeaders(protection.Handler(mux)), nil
 }
 
 func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {

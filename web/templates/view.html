@@ -8,7 +8,8 @@
 
   <label>Password</label>
   <div class="mono" style="display:flex; align-items:center; gap:0.75rem;">
-    <span>{{.Entry.Password}}</span>
+    <span class="secret" data-secret="{{.Entry.Password}}">••••••••</span>
+    <button type="button" class="btn-secondary" data-toggle-secret>Show</button>
     <button type="button" class="btn-secondary" data-copy="{{.Entry.Password}}">Copy</button>
   </div>
 

@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZeroVault</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-elevated: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --accent: #58a6ff;
+    --danger: #f85149;
+    --warning: #d29922;
+    --success: #3fb950;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    min-height: 100vh;
+    line-height: 1.55;
+  }
+  header {
+    padding: 4rem 1.5rem 3rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  header .badge {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(63, 185, 80, 0.12);
+    color: var(--success);
+    border: 1px solid rgba(63, 185, 80, 0.35);
+    margin-bottom: 1.25rem;
+  }
+  h1 {
+    font-size: 2.6rem;
+    margin: 0 0 0.6rem;
+    letter-spacing: -0.02em;
+  }
+  header p.tag {
+    color: var(--text-dim);
+    font-size: 1.15rem;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  .cta-row {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-block;
+    padding: 0.7rem 1.3rem;
+    border-radius: 6px;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+  .btn-primary { background: var(--accent); color: #0d1117; }
+  .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn:hover { opacity: 0.9; }
+
+  main { max-width: 920px; margin: 0 auto; padding: 3.5rem 1.5rem; }
+
+  section { margin-bottom: 3.5rem; }
+  h2 { font-size: 1.5rem; margin-bottom: 1.25rem; }
+  h2 .num { color: var(--text-dim); font-weight: 400; margin-right: 0.4rem; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+  }
+  .card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.4rem;
+  }
+  .card h3 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+  .card p { margin: 0; color: var(--text-dim); font-size: 0.92rem; }
+
+  pre {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--text);
+  }
+  code { font-family: var(--mono); }
+  .inline-code {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.9em;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  th, td { text-align: left; padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+  th { color: var(--text-dim); font-weight: 600; }
+
+  .stack-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .stack-pill {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: var(--accent);
+  }
+
+  .threat-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  @media (max-width: 700px) { .threat-cols { grid-template-columns: 1fr; } }
+  .threat-cols h3 { font-size: 0.95rem; margin: 0 0 0.6rem; }
+  .threat-cols ul { margin: 0; padding-left: 1.1rem; color: var(--text-dim); font-size: 0.9rem; }
+  .threat-cols li { margin-bottom: 0.4rem; }
+  .protected h3 { color: var(--success); }
+  .not-protected h3 { color: var(--warning); }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="badge">Zero Dependency 2026 · Track E</span>
+  <h1>ZeroVault</h1>
+  <p class="tag">
+    An encrypted password manager, TOTP 2FA generator, secrets scanner, and
+    local web dashboard — built entirely on the Go 1.27 standard library.
+    No third-party runtime dependencies. No custom crypto.
+  </p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="https://github.com/Aaditya2010-14/zerovault">View on GitHub</a>
+    <a class="btn btn-secondary" href="https://github.com/Aaditya2010-14/zerovault#readme">Read the docs</a>
+  </div>
+</header>
+
+<main>
+
+  <section>
+    <h2><span class="num">01</span>What it does</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Encrypted vault</h3>
+        <p>AES-256-GCM authenticated encryption, PBKDF2-HMAC-SHA256 key derivation at 100,000 iterations, fresh crypto/rand nonce on every save.</p>
+      </div>
+      <div class="card">
+        <h3>TOTP 2FA</h3>
+        <p>RFC 6238-compliant codes compatible with Google Authenticator and other standard apps — HOTP built from crypto/hmac + crypto/sha1.</p>
+      </div>
+      <div class="card">
+        <h3>Secrets scanner</h3>
+        <p>Walks a directory for leaked API keys, tokens, and high-entropy secrets — 18 named patterns plus Shannon-entropy generic detection.</p>
+      </div>
+      <div class="card">
+        <h3>Web dashboard</h3>
+        <p>A local, loopback-only browser UI for everything above — CSRF-protected, session-cookie authenticated, auto-escaped templates.</p>
+      </div>
+      <div class="card">
+        <h3>Built-in attack suite</h3>
+        <p><code class="inline-code">zerovault attack</code> runs 11 real attacks — brute force, tampering, XSS, CSRF, session hijacking — against a disposable fixture vault and reports pass/fail.</p>
+      </div>
+      <div class="card">
+        <h3>Single binary</h3>
+        <p><code class="inline-code">go build -o zerovault ./cmd/zerovault</code> — one command, no external files, templates and assets embedded via <code class="inline-code">//go:embed</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span>Zero-dependency stack</h2>
+    <p style="color: var(--text-dim); margin-bottom: 1rem;">
+      Every building block below is Go 1.27 standard library — nothing else appears in <code class="inline-code">go.mod</code>.
+    </p>
+    <div class="stack-list">
+      <span class="stack-pill">crypto/aes</span>
+      <span class="stack-pill">crypto/cipher</span>
+      <span class="stack-pill">crypto/hmac</span>
+      <span class="stack-pill">crypto/sha256</span>
+      <span class="stack-pill">crypto/sha1</span>
+      <span class="stack-pill">crypto/rand</span>
+      <span class="stack-pill">crypto/subtle</span>
+      <span class="stack-pill">encoding/base32</span>
+      <span class="stack-pill">encoding/json/v2</span>
+      <span class="stack-pill">uuid</span>
+      <span class="stack-pill">net/http</span>
+      <span class="stack-pill">html/template</span>
+      <span class="stack-pill">log/slog</span>
+      <span class="stack-pill">embed</span>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span>Quick start</h2>
+    <pre><code>go build -o zerovault ./cmd/zerovault
+
+./zerovault init
+./zerovault add github --username dev@example.com
+./zerovault get github -copy
+
+./zerovault totp add github-2fa --generate
+./zerovault totp list
+
+./zerovault scan .
+
+./zerovault serve          # http://127.0.0.1:8787
+
+./zerovault attack         # run the built-in security audit</code></pre>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span>Threat model summary</h2>
+    <div class="threat-cols">
+      <div class="protected">
+        <h3>Protected against</h3>
+        <ul>
+          <li>Offline vault theft (PBKDF2 + AES-256-GCM)</li>
+          <li>Vault tampering (GCM authentication tag)</li>
+          <li>Nonce reuse (fresh crypto/rand nonce per save)</li>
+          <li>XSS in the dashboard (html/template auto-escaping)</li>
+          <li>CSRF (net/http CrossOriginProtection)</li>
+          <li>Session hijack via XSS (HttpOnly, SameSite=Strict cookies)</li>
+          <li>Clickjacking, MIME sniffing, referrer leakage</li>
+          <li>Unthrottled password guessing via the web UI</li>
+        </ul>
+      </div>
+      <div class="not-protected">
+        <h3>Explicitly out of scope</h3>
+        <ul>
+          <li>Keyloggers / memory forensics on the local machine</li>
+          <li>Master password reuse across services</li>
+          <li>GPU/ASIC-accelerated offline brute force (PBKDF2 is not memory-hard)</li>
+          <li>Network eavesdropping — loopback-only, plain HTTP, not TLS</li>
+          <li>TOTP code brute force (expected — see README)</li>
+        </ul>
+      </div>
+    </div>
+    <p style="color: var(--text-dim); font-size: 0.88rem; margin-top: 1.25rem;">
+      Full threat model, design rationale, and every claim's supporting test: see
+      <a style="color: var(--accent);" href="https://github.com/Aaditya2010-14/zerovault#threat-model">README.md</a>.
+    </p>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span>Repository contents</h2>
+    <table>
+      <tr><th>Path</th><th>What's there</th></tr>
+      <tr><td class="inline-code">internal/crypto</td><td>PBKDF2, AES-256-GCM, secure random</td></tr>
+      <tr><td class="inline-code">internal/vault</td><td>Vault CRUD, encrypted storage, clipboard</td></tr>
+      <tr><td class="inline-code">internal/totp</td><td>HOTP/TOTP (RFC 4226 / 6238), base32</td></tr>
+      <tr><td class="inline-code">internal/scanner</td><td>Secret-pattern + entropy scanning</td></tr>
+      <tr><td class="inline-code">internal/web</td><td>Dashboard: sessions, CSRF, security headers</td></tr>
+      <tr><td class="inline-code">internal/cli</td><td>Command-line entry points</td></tr>
+      <tr><td class="inline-code">attacks/</td><td>Self-contained penetration test suite</td></tr>
+      <tr><td class="inline-code">STDLIB.md</td><td>16 documented third-party → stdlib substitutions</td></tr>
+    </table>
+  </section>
+
+</main>
+
+<footer>
+  Built for the Zero Dependency 2026 Hackathon, Track E.
+  <a href="https://github.com/Aaditya2010-14/zerovault">github.com/Aaditya2010-14/zerovault</a>
+</footer>
+
+</body>
+</html>
