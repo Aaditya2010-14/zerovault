@@ -1,0 +1,7 @@
+/zerovault
+/zerovault.exe
+*.vault
+.vault/
+*.test
+*.out
+coverage.out
