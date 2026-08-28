@@ -1,0 +1,37 @@
+{{define "content"}}
+<h1>Secrets Scanner</h1>
+<div class="card">
+  <form method="post" action="/scanner">
+    <label for="path">Directory path</label>
+    <input type="text" id="path" name="path" value="{{.Path}}" placeholder="/path/to/project" required>
+    <div style="margin-top: 1rem;">
+      <button type="submit">Scan</button>
+    </div>
+  </form>
+</div>
+
+{{if .Scanned}}
+<div class="card">
+  {{if not .Findings}}
+    <div class="empty">No secrets found.</div>
+  {{else}}
+    <table>
+      <tr><th>Severity</th><th>File</th><th>Line</th><th>Pattern</th><th>Match</th></tr>
+      {{range .Findings}}
+      <tr>
+        <td>
+          {{if eq .Severity "critical"}}<span class="badge badge-critical">critical</span>
+          {{else}}<span class="badge badge-warning">warning</span>{{end}}
+        </td>
+        <td class="mono">{{.File}}</td>
+        <td>{{.Line}}</td>
+        <td>{{.Pattern}}</td>
+        <td class="mono">{{.Match}}</td>
+      </tr>
+      {{end}}
+    </table>
+    <p class="entry-sub">{{len .Findings}} finding(s)</p>
+  {{end}}
+</div>
+{{end}}
+{{end}}

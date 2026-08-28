@@ -1,0 +1,31 @@
+{{define "layout"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} — ZeroVault</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <nav>
+    <a class="brand" href="/dashboard">ZeroVault</a>
+    {{if .Authenticated}}
+      <a href="/dashboard">Vault</a>
+      <a href="/totp">TOTP</a>
+      <a href="/generate">Generate</a>
+      <a href="/scanner">Scanner</a>
+      <form method="post" action="/lock">
+        <button type="submit" class="btn-secondary">Lock</button>
+      </form>
+    {{end}}
+  </nav>
+  <main>
+    {{if .Error}}<div class="flash-error">{{.Error}}</div>{{end}}
+    {{if .Success}}<div class="flash-success">{{.Success}}</div>{{end}}
+    {{template "content" .}}
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
+{{end}}

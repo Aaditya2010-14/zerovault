@@ -47,6 +47,8 @@ func Run(args []string) int {
 		return cmdTOTP(args[1:])
 	case "scan":
 		return cmdScan(args[1:])
+	case "serve":
+		return cmdServe(args[1:])
 	case "help", "-h", "--help":
 		printUsage()
 		return 0

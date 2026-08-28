@@ -1,0 +1,29 @@
+{{define "content"}}
+<h1>{{.Entry.Name}}</h1>
+<div class="card">
+  {{if .Entry.Username}}
+  <label>Username</label>
+  <div>{{.Entry.Username}}</div>
+  {{end}}
+
+  <label>Password</label>
+  <div class="mono" style="display:flex; align-items:center; gap:0.75rem;">
+    <span>{{.Entry.Password}}</span>
+    <button type="button" class="btn-secondary" data-copy="{{.Entry.Password}}">Copy</button>
+  </div>
+
+  {{if .Entry.URL}}
+  <label>URL</label>
+  <div><a href="{{.Entry.URL}}" target="_blank" rel="noopener noreferrer" style="color: var(--accent);">{{.Entry.URL}}</a></div>
+  {{end}}
+
+  {{if .Entry.Notes}}
+  <label>Notes</label>
+  <div>{{.Entry.Notes}}</div>
+  {{end}}
+</div>
+
+<form method="post" action="/delete/{{.Entry.Name}}" data-confirm="Delete {{.Entry.Name}}? This cannot be undone.">
+  <button type="submit" class="btn-danger">Delete entry</button>
+</form>
+{{end}}

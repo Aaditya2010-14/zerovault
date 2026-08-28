@@ -1,0 +1,26 @@
+{{define "content"}}
+<h1>Add Entry</h1>
+<div class="card">
+  <form method="post" action="/add">
+    <label for="name">Name</label>
+    <input type="text" id="name" name="name" required autofocus>
+
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username">
+
+    <label for="password">Password</label>
+    <input type="text" id="password" name="password" class="mono">
+
+    <label for="url">URL</label>
+    <input type="url" id="url" name="url">
+
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes" rows="3"></textarea>
+
+    <div style="margin-top: 1rem; display:flex; gap:0.5rem;">
+      <button type="submit">Save entry</button>
+      <a href="/dashboard" class="btn-secondary btn">Cancel</a>
+    </div>
+  </form>
+</div>
+{{end}}

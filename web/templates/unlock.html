@@ -1,0 +1,18 @@
+{{define "content"}}
+<div class="unlock-wrap">
+  <div class="card">
+    <h1>{{if .VaultExists}}Unlock Vault{{else}}Create Vault{{end}}</h1>
+    <form method="post" action="/unlock">
+      <label for="password">Master password</label>
+      <input type="password" id="password" name="password" autofocus required>
+      {{if not .VaultExists}}
+      <label for="confirm">Confirm master password</label>
+      <input type="password" id="confirm" name="confirm" required>
+      {{end}}
+      <div style="margin-top: 1rem;">
+        <button type="submit">{{if .VaultExists}}Unlock{{else}}Create Vault{{end}}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{{end}}
