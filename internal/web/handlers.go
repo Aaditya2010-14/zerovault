@@ -11,6 +11,7 @@ import (
 
 	vcrypto "zerovault/internal/crypto"
 	"zerovault/internal/fileenc"
+	"zerovault/internal/health"
 	"zerovault/internal/scanner"
 	"zerovault/internal/totp"
 	"zerovault/internal/vault"
@@ -393,6 +394,41 @@ func (s *Server) handleScannerSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	data.Findings = findings
 	s.render(w, "scanner", data)
+}
+
+// --- Password health ---
+
+type healthData struct {
+	baseData
+	Report     health.Report
+	ScoreClass string
+	Strong     []health.EntryHealth
+}
+
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFromContext(r)
+	report := health.Analyze(sess.vault, time.Now())
+
+	scoreClass := "good"
+	if report.Score < 50 {
+		scoreClass = "critical"
+	} else if report.Score < 80 {
+		scoreClass = "warning"
+	}
+
+	var strong []health.EntryHealth
+	for _, e := range report.Entries {
+		if e.Strength >= health.Strong {
+			strong = append(strong, e)
+		}
+	}
+
+	s.render(w, "health", healthData{
+		baseData:   baseData{Title: "Password Health", Authenticated: true},
+		Report:     report,
+		ScoreClass: scoreClass,
+		Strong:     strong,
+	})
 }
 
 // --- File encryption ---

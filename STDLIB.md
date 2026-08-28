@@ -246,3 +246,24 @@ using only stdlib's AES-GCM as the per-chunk primitive.
 the encode and decode side) — validated by dedicated tests for tampering,
 truncation, and an exact-chunk-boundary empty file, not just a happy-path
 round trip.
+
+## 18. Password strength estimation — `github.com/trustelem/zxcvbn` or
+similar
+
+**Used instead:** A hand-written entropy heuristic
+(`internal/health/health.go`): `bits = length * log2(charset size)`, where
+charset size is the sum of the character classes actually present in the
+password, plus explicit checks for the 100 most commonly leaked passwords
+and a few common substrings (123/abc/qwerty).
+
+**Why it works:** zxcvbn-style estimators exist to catch patterns naive
+entropy math misses (`password123` "looks" high-entropy by charset alone).
+ZeroVault gets most of that value cheaply by pairing the entropy estimate
+with an explicit common-password/common-pattern check — the same
+combination the health dashboard displays as CRITICAL findings — rather
+than needing a pattern-matching library.
+
+**Trade-off:** Won't catch keyboard-walk patterns beyond the few hardcoded
+substrings, or dictionary words outside the 100-entry list — a real
+zxcvbn port evaluates against a much larger frequency-ranked dictionary
+and known keyboard adjacency patterns.

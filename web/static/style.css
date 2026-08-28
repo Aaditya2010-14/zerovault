@@ -174,3 +174,18 @@ th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--borde
 th { color: var(--text-dim); font-weight: 600; }
 
 .countdown { color: var(--text-dim); font-size: 0.8rem; }
+
+.health-score { text-align: center; padding: 1.75rem 1.25rem; }
+.health-score-label { color: var(--text-dim); font-size: 0.8rem; letter-spacing: 0.08em; }
+.health-score-number { font-size: 3rem; font-weight: 700; margin: 0.25rem 0 0.75rem; }
+.health-bar { height: 10px; background: var(--bg); border-radius: 999px; overflow: hidden; }
+.health-bar-fill { height: 100%; border-radius: 999px; background: var(--success); }
+.health-critical .health-score-number, .health-critical .health-bar-fill { color: var(--danger); background: var(--danger); }
+.health-warning .health-score-number, .health-warning .health-bar-fill { color: var(--warning); background: var(--warning); }
+.health-good .health-score-number { color: var(--success); }
+
+.health-section-critical { color: var(--danger); }
+.health-section-warning { color: var(--warning); }
+.health-section-strong { color: var(--success); }
+.health-issue { padding: 0.4rem 0; font-size: 0.9rem; border-bottom: 1px solid var(--border); }
+.health-issue:last-child { border-bottom: none; }

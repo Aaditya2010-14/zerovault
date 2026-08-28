@@ -1,0 +1,49 @@
+{{define "content"}}
+<h1>Password Health</h1>
+
+<div class="card health-score health-{{.ScoreClass}}">
+  <div class="health-score-label">VAULT HEALTH SCORE</div>
+  <div class="health-score-number">{{.Report.Score}}%</div>
+  <div class="health-bar"><div class="health-bar-fill" style="width: {{.Report.Score}}%;"></div></div>
+</div>
+
+{{if not .Report.Entries}}
+<div class="card"><div class="empty">Vault is empty — nothing to analyze.</div></div>
+{{else}}
+
+{{if .Report.Critical}}
+<div class="card">
+  <h2 class="health-section-critical">CRITICAL ({{len .Report.Critical}})</h2>
+  {{range .Report.Critical}}<div class="health-issue">⚠ {{.Message}}</div>{{end}}
+</div>
+{{end}}
+
+{{if .Report.Warning}}
+<div class="card">
+  <h2 class="health-section-warning">WARNING ({{len .Report.Warning}})</h2>
+  {{range .Report.Warning}}<div class="health-issue">⚠ {{.Message}}</div>{{end}}
+</div>
+{{end}}
+
+{{if .Strong}}
+<div class="card">
+  <h2 class="health-section-strong">STRONG ({{len .Strong}})</h2>
+  {{range .Strong}}<div class="health-issue">✓ {{.Name}}: {{.Strength}} ({{printf "%.0f" .Bits}} bits)</div>{{end}}
+</div>
+{{end}}
+
+<div class="card">
+  <h2>All entries</h2>
+  <table>
+    <tr><th>Name</th><th>Strength</th><th>Bits</th></tr>
+    {{range .Report.Entries}}
+    <tr>
+      <td class="mono">{{.Name}}</td>
+      <td>{{.Strength}}</td>
+      <td>{{printf "%.0f" .Bits}}</td>
+    </tr>
+    {{end}}
+  </table>
+</div>
+{{end}}
+{{end}}

@@ -121,6 +121,21 @@ inside the encrypted envelope, so `decrypt` without `-o` restores it exactly.
 The same flow is available from the dashboard's File Encryption page
 (upload → encrypt/decrypt → download).
 
+### Password health
+
+```bash
+zerovault health    # colorized health report in the terminal
+```
+
+Also available as the dashboard's Health page. Every entry gets an
+entropy-based strength score (Weak / Fair / Strong / Very Strong from
+`length * log2(charset size)`), checked against a built-in list of 100
+commonly leaked passwords and a few common substrings (123/abc/qwerty).
+Reused passwords are found by comparing SHA-256 hashes (never plaintext),
+and entries not rotated in 90+ days are flagged. The overall vault score
+starts at 100% and loses points per finding — red below 50%, yellow below
+80%, green above.
+
 ### Security audit (attack suite)
 
 ```bash
@@ -300,7 +315,7 @@ zerovault SHA256` (Windows) or `sha256sum zerovault` (Linux/Mac).
 
 - **Package Killer (+3)** — zero third-party runtime dependencies, no
   `golang.org/x/*`, empty `go.mod` require block.
-- **STDLIB Log (+3)** — see `STDLIB.md` for 17 documented stdlib
+- **STDLIB Log (+3)** — see `STDLIB.md` for 18 documented stdlib
   substitutions.
 - **Reproducible Build (+5)** — see above; two independent clean builds
   produce byte-identical SHA-256 hashes.
