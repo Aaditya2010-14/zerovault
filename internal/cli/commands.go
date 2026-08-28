@@ -45,6 +45,8 @@ func Run(args []string) int {
 		return cmdGenerate(args[1:])
 	case "totp":
 		return cmdTOTP(args[1:])
+	case "scan":
+		return cmdScan(args[1:])
 	case "help", "-h", "--help":
 		printUsage()
 		return 0
@@ -68,9 +70,13 @@ Usage:
   zerovault totp add [-digits N] [-period N] <name>   add a TOTP 2FA secret
   zerovault totp get <name>               show the current TOTP code
   zerovault totp list                     list all TOTP entries with live codes
+  zerovault scan [options] <path>         scan a directory for leaked secrets
   zerovault serve [-addr host:port]       start the web dashboard
 
 Note: flags must come before the entry name.
+
+Scan options:
+  -min-entropy float   entropy threshold for generic secret detection (default 3.5)
 
 Add options:
   -username string   account username
