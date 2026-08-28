@@ -220,3 +220,29 @@ itself readable as a demo artifact.
 way `go test -fuzz` or a dedicated security scanner might; it verifies the
 specific, documented threats in the threat model, which is what it was
 built to do.
+
+## 17. Streaming/chunked authenticated encryption for large files —
+a library like Tink's streaming AEAD, or `age`'s encryption format
+
+**Used instead:** A hand-built "STREAM" construction over `crypto/aes` +
+`crypto/cipher`'s AES-GCM (`internal/fileenc/fileenc.go`), used by
+`zerovault encrypt`/`decrypt` and the dashboard's File Encryption page.
+
+**Why it works:** `cipher.AEAD` only exposes single-shot `Seal`/`Open`,
+which would force an entire file into memory to get one authentication
+tag — unworkable for the "must not load 100MB+ files into memory" and
+"stream in 64KB chunks" requirements. Sealing each 64KB chunk under its
+own nonce (a random 8-byte per-file prefix + a 4-byte big-endian counter)
+gets bounded memory back, and setting the counter's top bit on the final
+chunk binds "this is really the end" into that chunk's authenticated
+nonce — an attacker who truncates the ciphertext can't make an earlier
+chunk decrypt as if it were the last one, since it was never sealed that
+way. This is the same idea published designs like age/rage and Tink's
+streaming AEAD use; ours is a from-scratch implementation of that idea
+using only stdlib's AES-GCM as the per-chunk primitive.
+
+**Trade-off:** More code to get right than "encrypt once with one nonce"
+(nonce/counter bookkeping, wire-position-based finality checks on both
+the encode and decode side) — validated by dedicated tests for tampering,
+truncation, and an exact-chunk-boundary empty file, not just a happy-path
+round trip.

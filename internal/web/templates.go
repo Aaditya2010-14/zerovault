@@ -9,7 +9,7 @@ import (
 )
 
 // pages lists every content template that gets combined with layout.html.
-var pages = []string{"unlock", "dashboard", "add", "view", "totp", "generate", "scanner"}
+var pages = []string{"unlock", "dashboard", "add", "view", "totp", "generate", "scanner", "file"}
 
 // templateSet holds one *template.Template per page, each containing both
 // layout.html's "layout" definition and that page's "content" definition.

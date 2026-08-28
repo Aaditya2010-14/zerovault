@@ -78,6 +78,7 @@ var registry = []Attack{
 	{"CRYPTO ATTACKS", "Vault truncation/injection (4 methods)", runTruncationTamper},
 	{"CRYPTO ATTACKS", "PBKDF2 timing analysis", runTimingAnalysis},
 	{"CRYPTO ATTACKS", "Nonce reuse detection (100 saves)", runNonceReuse},
+	{"CRYPTO ATTACKS", "File encryption tampering (4 methods)", runFileTamperAttack},
 	{"WEB ATTACKS", "XSS injection (8 payloads)", runXSSSuite},
 	{"WEB ATTACKS", "CSRF cross-origin (5 origins)", runCSRFSuite},
 	{"WEB ATTACKS", "Session security (5 vectors)", runSessionSuite},

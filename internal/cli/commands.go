@@ -51,6 +51,10 @@ func Run(args []string) int {
 		return cmdServe(args[1:])
 	case "attack":
 		return cmdAttack(args[1:])
+	case "encrypt":
+		return cmdEncrypt(args[1:])
+	case "decrypt":
+		return cmdDecrypt(args[1:])
 	case "help", "-h", "--help":
 		printUsage()
 		return 0
@@ -77,6 +81,8 @@ Usage:
   zerovault scan [options] <path>         scan a directory for leaked secrets
   zerovault serve [-addr host:port]       start the web dashboard
   zerovault attack                        run the built-in security audit (penetration test suite)
+  zerovault encrypt <file> [-o out.enc]   encrypt any file with AES-256-GCM
+  zerovault decrypt <file.enc> [-o out]   decrypt a ZeroVault-encrypted file
 
 Note: flags must come before the entry name.
 

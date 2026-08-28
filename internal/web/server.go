@@ -64,6 +64,10 @@ func (s *Server) Handler() (http.Handler, error) {
 	mux.HandleFunc("GET /scanner", s.requireSession(s.handleScannerForm))
 	mux.HandleFunc("POST /scanner", s.requireSession(s.handleScannerSubmit))
 
+	mux.HandleFunc("GET /file", s.requireSession(s.handleFileForm))
+	mux.HandleFunc("POST /file/encrypt", s.requireSession(s.handleFileEncrypt))
+	mux.HandleFunc("POST /file/decrypt", s.requireSession(s.handleFileDecrypt))
+
 	// CrossOriginProtection rejects cross-origin browser requests (via
 	// Sec-Fetch-Site, falling back to comparing Origin against Host) to
 	// every non-safe-method route — this is the stdlib CSRF defense the

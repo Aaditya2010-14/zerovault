@@ -101,19 +101,39 @@ zerovault serve                                        # http://127.0.0.1:8787
 zerovault serve -addr 127.0.0.1:9000                    # custom port, still loopback-only
 ```
 
+### File encryption
+
+```bash
+zerovault encrypt report.pdf                 # -> report.pdf.enc (prompts for a password)
+zerovault encrypt report.pdf -o backup.enc    # custom output name
+zerovault decrypt report.pdf.enc              # -> report.pdf (original filename recovered automatically)
+zerovault decrypt backup.enc -o restored.pdf  # custom output name
+```
+
+Encrypts any file — independent of the vault and its master password — with
+AES-256-GCM under a PBKDF2-derived key, the same crypto pipeline the vault
+itself uses. Files are streamed in 64KB chunks rather than loaded whole into
+memory, so multi-hundred-megabyte files work without excessive RAM use; each
+chunk is sealed under its own nonce (see `internal/fileenc` and `STDLIB.md`
+entry 17), so tampering *or* truncating the ciphertext is always detected
+before any plaintext is written to disk. The original filename travels
+inside the encrypted envelope, so `decrypt` without `-o` restores it exactly.
+The same flow is available from the dashboard's File Encryption page
+(upload → encrypt/decrypt → download).
+
 ### Security audit (attack suite)
 
 ```bash
 zerovault attack
 ```
 
-Runs 11 real attacks — dictionary brute force, GCM bit-flip/truncation
-tampering, PBKDF2 timing analysis, nonce-reuse detection, XSS injection,
-CSRF, session hijacking attempts, security-header checks, path traversal,
-and TOTP brute force — against a disposable fixture vault and a real,
-locally-running copy of the dashboard. See `attacks/` for the source; each
-attack performs the real cryptographic operation or real HTTP request it
-claims to, not a simulated one.
+Runs 12 real attacks — dictionary brute force, GCM bit-flip/truncation
+tampering, PBKDF2 timing analysis, nonce-reuse detection, encrypted-file
+tampering, XSS injection, CSRF, session hijacking attempts, security-header
+checks, path traversal, and TOTP brute force — against a disposable fixture
+vault and a real, locally-running copy of the dashboard. See `attacks/` for
+the source; each attack performs the real cryptographic operation or real
+HTTP request it claims to, not a simulated one.
 
 ## Threat model
 
@@ -149,6 +169,12 @@ claims to, not a simulated one.
 - **Scanning outside the intended target** — the dashboard's scanner
   rejects paths that don't exist, aren't directories, or are well-known
   system roots (`C:\`, `C:\Windows`, `/`, `/etc`, ...).
+- **Tampered or truncated encrypted files** — `zerovault encrypt`/`decrypt`
+  seals every 64KB chunk under its own nonce, with the final chunk's
+  "last chunk" status bound into that nonce. A bit flip anywhere, or the
+  file being cut short, is rejected before any plaintext is written —
+  verified by `zerovault attack`'s file-tamper test and by
+  `internal/fileenc`'s own test suite.
 
 ### What ZeroVault does NOT protect against (and why that's an acceptable
 hackathon-scope trade-off)
@@ -274,7 +300,7 @@ zerovault SHA256` (Windows) or `sha256sum zerovault` (Linux/Mac).
 
 - **Package Killer (+3)** — zero third-party runtime dependencies, no
   `golang.org/x/*`, empty `go.mod` require block.
-- **STDLIB Log (+3)** — see `STDLIB.md` for 15+ documented stdlib
+- **STDLIB Log (+3)** — see `STDLIB.md` for 17 documented stdlib
   substitutions.
 - **Reproducible Build (+5)** — see above; two independent clean builds
   produce byte-identical SHA-256 hashes.

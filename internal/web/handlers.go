@@ -2,11 +2,15 @@ package web
 
 import (
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	vcrypto "zerovault/internal/crypto"
+	"zerovault/internal/fileenc"
 	"zerovault/internal/scanner"
 	"zerovault/internal/totp"
 	"zerovault/internal/vault"
@@ -389,4 +393,117 @@ func (s *Server) handleScannerSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	data.Findings = findings
 	s.render(w, "scanner", data)
+}
+
+// --- File encryption ---
+
+const maxUploadSize = 200 * 1024 * 1024 // 200MB — generous for a demo, bounded to avoid an unbounded upload DoS
+
+func (s *Server) handleFileForm(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "file", baseData{Title: "File Encryption", Authenticated: true})
+}
+
+// handleFileEncrypt receives an uploaded file, encrypts it with fileenc
+// (the same AES-256-GCM + PBKDF2 pipeline the CLI's `encrypt` command
+// uses), and streams the result back as a download — nothing is written
+// to a path the browser could collide with, since the ciphertext only
+// ever exists in a server-side temp file cleaned up before the handler
+// returns.
+func (s *Server) handleFileEncrypt(w http.ResponseWriter, r *http.Request) {
+	s.handleFileOp(w, r, true)
+}
+
+func (s *Server) handleFileDecrypt(w http.ResponseWriter, r *http.Request) {
+	s.handleFileOp(w, r, false)
+}
+
+func (s *Server) handleFileOp(w http.ResponseWriter, r *http.Request, encrypt bool) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		s.renderFileError(w, "upload too large or malformed (200MB limit)")
+		return
+	}
+	defer r.MultipartForm.RemoveAll()
+
+	password := r.FormValue("password")
+	if password == "" {
+		s.renderFileError(w, "password cannot be empty")
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		s.renderFileError(w, "no file uploaded")
+		return
+	}
+	defer file.Close()
+
+	tmpDir, err := os.MkdirTemp("", "zerovault-fileop-*")
+	if err != nil {
+		s.logger.Error("failed to create temp dir", "error", err)
+		http.Error(w, "an error occurred", http.StatusInternalServerError)
+		return
+	}
+	defer os.RemoveAll(tmpDir)
+
+	inPath := filepath.Join(tmpDir, filepath.Base(header.Filename))
+	inFile, err := os.Create(inPath)
+	if err != nil {
+		s.logger.Error("failed to create temp file", "error", err)
+		http.Error(w, "an error occurred", http.StatusInternalServerError)
+		return
+	}
+	if _, err := io.Copy(inFile, file); err != nil {
+		inFile.Close()
+		s.logger.Error("failed to buffer upload", "error", err)
+		http.Error(w, "an error occurred", http.StatusInternalServerError)
+		return
+	}
+	inFile.Close()
+
+	var (
+		outPath    string
+		outName    string
+		opErr      error
+		bytesTotal int64
+	)
+	if encrypt {
+		outPath = inPath + ".enc"
+		opErr = fileenc.EncryptFile(inPath, outPath, password, nil, nil)
+		outName = header.Filename + ".enc"
+	} else {
+		// Empty outPath lets fileenc recover the original filename from the
+		// encrypted file's own metadata (placed alongside inPath, i.e. in
+		// tmpDir — never a path the browser could collide with).
+		outPath, opErr = fileenc.DecryptFile(inPath, "", password, nil, nil)
+		if opErr == nil {
+			outName = filepath.Base(outPath)
+		}
+	}
+	if opErr != nil {
+		s.renderFileError(w, opErr.Error())
+		return
+	}
+
+	outFile, err := os.Open(outPath)
+	if err != nil {
+		s.logger.Error("failed to open result file", "error", err)
+		http.Error(w, "an error occurred", http.StatusInternalServerError)
+		return
+	}
+	defer outFile.Close()
+	if info, err := outFile.Stat(); err == nil {
+		bytesTotal = info.Size()
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", outName))
+	w.Header().Set("Content-Length", strconv.FormatInt(bytesTotal, 10))
+	io.Copy(w, outFile)
+}
+
+func (s *Server) renderFileError(w http.ResponseWriter, msg string) {
+	s.render(w, "file", struct {
+		baseData
+	}{baseData{Title: "File Encryption", Authenticated: true, Error: msg}})
 }

@@ -182,8 +182,12 @@
         <p>A local, loopback-only browser UI for everything above — CSRF-protected, session-cookie authenticated, auto-escaped templates.</p>
       </div>
       <div class="card">
+        <h3>File encryption</h3>
+        <p><code class="inline-code">zerovault encrypt/decrypt</code> — any file, streamed in 64KB chunks under chunked AES-GCM, independent of the vault's master password.</p>
+      </div>
+      <div class="card">
         <h3>Built-in attack suite</h3>
-        <p><code class="inline-code">zerovault attack</code> runs 11 real attacks — brute force, tampering, XSS, CSRF, session hijacking — against a disposable fixture vault and reports pass/fail.</p>
+        <p><code class="inline-code">zerovault attack</code> runs 12 real attacks — brute force, tampering, XSS, CSRF, session hijacking — against a disposable fixture vault and reports pass/fail.</p>
       </div>
       <div class="card">
         <h3>Single binary</h3>
@@ -227,6 +231,9 @@
 ./zerovault totp list
 
 ./zerovault scan .
+
+./zerovault encrypt report.pdf
+./zerovault decrypt report.pdf.enc
 
 ./zerovault serve          # http://127.0.0.1:8787
 
@@ -274,10 +281,11 @@
       <tr><td class="inline-code">internal/vault</td><td>Vault CRUD, encrypted storage, clipboard</td></tr>
       <tr><td class="inline-code">internal/totp</td><td>HOTP/TOTP (RFC 4226 / 6238), base32</td></tr>
       <tr><td class="inline-code">internal/scanner</td><td>Secret-pattern + entropy scanning</td></tr>
+      <tr><td class="inline-code">internal/fileenc</td><td>Standalone streamed file encryption (chunked AES-GCM)</td></tr>
       <tr><td class="inline-code">internal/web</td><td>Dashboard: sessions, CSRF, security headers</td></tr>
       <tr><td class="inline-code">internal/cli</td><td>Command-line entry points</td></tr>
       <tr><td class="inline-code">attacks/</td><td>Self-contained penetration test suite</td></tr>
-      <tr><td class="inline-code">STDLIB.md</td><td>16 documented third-party → stdlib substitutions</td></tr>
+      <tr><td class="inline-code">STDLIB.md</td><td>17 documented third-party → stdlib substitutions</td></tr>
     </table>
   </section>
 

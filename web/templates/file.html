@@ -1,0 +1,38 @@
+{{define "content"}}
+<h1>File Encryption</h1>
+
+<div class="card">
+  <h2>Encrypt a file</h2>
+  <form method="post" action="/file/encrypt" enctype="multipart/form-data">
+    <label for="enc-file">File to encrypt</label>
+    <input type="file" id="enc-file" name="file" required>
+    <label for="enc-password">Password</label>
+    <input type="password" id="enc-password" name="password" required>
+    <div style="margin-top: 1rem;">
+      <button type="submit">Encrypt &amp; download</button>
+    </div>
+  </form>
+  <p class="entry-sub" style="margin-top: 0.75rem;">
+    AES-256-GCM, streamed in 64KB chunks, PBKDF2 key derivation — same
+    pipeline as the vault. Output downloads as <span class="mono">&lt;name&gt;.enc</span>.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Decrypt a file</h2>
+  <form method="post" action="/file/decrypt" enctype="multipart/form-data">
+    <label for="dec-file">ZeroVault-encrypted file</label>
+    <input type="file" id="dec-file" name="file" required>
+    <label for="dec-password">Password</label>
+    <input type="password" id="dec-password" name="password" required>
+    <div style="margin-top: 1rem;">
+      <button type="submit">Decrypt &amp; download</button>
+    </div>
+  </form>
+  <p class="entry-sub" style="margin-top: 0.75rem;">
+    The original filename is recovered from the encrypted file's own
+    metadata. A wrong password or a tampered/truncated file is rejected
+    outright.
+  </p>
+</div>
+{{end}}
