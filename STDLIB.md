@@ -267,3 +267,28 @@ than needing a pattern-matching library.
 substrings, or dictionary words outside the 100-entry list — a real
 zxcvbn port evaluates against a much larger frequency-ranked dictionary
 and known keyboard adjacency patterns.
+
+## 19. Git history secret scanning — `trufflehog`, `gitleaks`, or
+shelling out to the `git` binary (`git log`, `git cat-file`)
+
+**Used instead:** `internal/gitscan` reads `.git/objects` directly:
+`compress/zlib` to inflate loose objects, then hand-written parsers for
+git's commit/tree object text and binary formats, walking the commit
+graph via parent SHAs.
+
+**Why it works:** A git object is `"<type> <size>\0<content>"`,
+zlib-compressed, named by the SHA-1 of that content — a small, completely
+documented format (`gitrepository-layout`/`gitformat-commit` in git's own
+docs), not something that needs a library or a subprocess to read. Commits
+point to a tree by SHA; trees list `"<mode> <name>\0<20-byte-sha>"` entries
+for files and subdirectories; blobs are just the raw file bytes. Walking
+that graph with a BFS over parent SHAs and reusing the existing
+`scanner.ScanBytes` pattern/entropy detector on each blob is enough to
+scan every version of every file that ever existed in the repository —
+including ones deleted in a later commit, which a working-tree-only scan
+can never see.
+
+**Trade-off:** Only loose objects are read; a repository that's been
+`git gc`'d into packfiles (delta-compressed, a meaningfully bigger parsing
+job — OFS_DELTA/REF_DELTA chains) isn't supported. Documented as an
+explicit edge case rather than silently producing an incomplete scan.

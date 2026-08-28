@@ -94,6 +94,19 @@ zerovault scan --min-entropy 4.0 ./some-project        # tune generic-secret sen
 Exit codes: `0` no findings, `1` warnings only, `2` at least one critical
 finding — designed to be CI-friendly.
 
+```bash
+zerovault scan --git ~/my-project/              # scan git commit history for leaked secrets
+zerovault scan --git ~/my-project/ -depth 100    # scan the last 100 commits (default: 50)
+```
+
+Reads `.git/objects` directly (`internal/gitscan`) — no shelling out to
+`git`. Walks the commit graph from HEAD, scans every distinct file blob
+it finds (identical content across commits is only scanned once) with the
+same pattern/entropy detection as a regular scan, and flags anything whose
+path no longer exists in HEAD's tree as **deleted in a later commit — but
+still in history**. Only loose objects are supported (see `STDLIB.md`
+entry 19) — a `git gc`'d repository with packed objects is out of scope.
+
 ### Web dashboard
 
 ```bash
@@ -315,7 +328,7 @@ zerovault SHA256` (Windows) or `sha256sum zerovault` (Linux/Mac).
 
 - **Package Killer (+3)** — zero third-party runtime dependencies, no
   `golang.org/x/*`, empty `go.mod` require block.
-- **STDLIB Log (+3)** — see `STDLIB.md` for 18 documented stdlib
+- **STDLIB Log (+3)** — see `STDLIB.md` for 19 documented stdlib
   substitutions.
 - **Reproducible Build (+5)** — see above; two independent clean builds
   produce byte-identical SHA-256 hashes.

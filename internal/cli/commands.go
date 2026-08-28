@@ -81,6 +81,7 @@ Usage:
   zerovault totp get <name>               show the current TOTP code
   zerovault totp list                     list all TOTP entries with live codes
   zerovault scan [options] <path>         scan a directory for leaked secrets
+  zerovault scan --git <repo> [-depth N]  scan git commit history for leaked secrets
   zerovault serve [-addr host:port]       start the web dashboard
   zerovault attack                        run the built-in security audit (penetration test suite)
   zerovault encrypt <file> [-o out.enc]   encrypt any file with AES-256-GCM
