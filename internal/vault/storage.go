@@ -68,6 +68,31 @@ func Load(path, password string) (*Vault, error) {
 	return v, nil
 }
 
+// Rekey re-encrypts the vault at path under a new master password: it
+// loads with oldPassword, saves with newPassword (which draws a fresh
+// random salt via Save, exactly as if the vault were being created for
+// the first time), and — as a final check that the new password actually
+// works — immediately loads it back with newPassword. Save's atomic
+// write (temp file + rename) means a crash mid-rekey leaves either the
+// untouched old vault or the fully-written new one, never a corrupted
+// partial file.
+func Rekey(path, oldPassword, newPassword string) (*Vault, error) {
+	v, err := Load(path, oldPassword)
+	if err != nil {
+		return nil, fmt.Errorf("vault: rekey failed to unlock with current password: %w", err)
+	}
+
+	if err := Save(path, newPassword, v); err != nil {
+		return nil, fmt.Errorf("vault: rekey failed to save under new password: %w", err)
+	}
+
+	verified, err := Load(path, newPassword)
+	if err != nil {
+		return nil, fmt.Errorf("vault: rekey saved but failed to verify with the new password: %w", err)
+	}
+	return verified, nil
+}
+
 // Exists reports whether a vault file already exists at path.
 func Exists(path string) bool {
 	_, err := os.Stat(path)

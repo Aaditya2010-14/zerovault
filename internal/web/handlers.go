@@ -431,6 +431,49 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// --- Settings / master password rotation ---
+
+func (s *Server) handleSettingsForm(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "settings", baseData{Title: "Settings", Authenticated: true})
+}
+
+func (s *Server) handleSettingsRekey(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFromContext(r)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+
+	current := r.FormValue("current_password")
+	newPw := r.FormValue("new_password")
+	confirm := r.FormValue("confirm_password")
+
+	if current != sess.masterPw {
+		s.render(w, "settings", baseData{Title: "Settings", Authenticated: true, Error: "current password is incorrect"})
+		return
+	}
+	if newPw == "" || newPw != confirm {
+		s.render(w, "settings", baseData{Title: "Settings", Authenticated: true, Error: "new passwords do not match or are empty"})
+		return
+	}
+
+	if _, err := vault.Rekey(sess.vaultPath, current, newPw); err != nil {
+		s.logger.Error("rekey failed", "error", err)
+		s.render(w, "settings", baseData{Title: "Settings", Authenticated: true, Error: "failed to change master password"})
+		return
+	}
+
+	// The old session's masterPw is now stale (the vault is re-encrypted
+	// under a different key) — force re-authentication rather than
+	// letting the session limp along with a password that no longer
+	// matches what's on disk.
+	if cookie, err := r.Cookie(sessionCookieName); err == nil {
+		s.sessions.delete(cookie.Value)
+	}
+	clearSessionCookie(w)
+	http.Redirect(w, r, "/unlock", http.StatusSeeOther)
+}
+
 // --- File encryption ---
 
 const maxUploadSize = 200 * 1024 * 1024 // 200MB — generous for a demo, bounded to avoid an unbounded upload DoS

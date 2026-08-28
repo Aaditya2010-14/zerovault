@@ -66,6 +66,9 @@ func (s *Server) Handler() (http.Handler, error) {
 
 	mux.HandleFunc("GET /health", s.requireSession(s.handleHealth))
 
+	mux.HandleFunc("GET /settings", s.requireSession(s.handleSettingsForm))
+	mux.HandleFunc("POST /settings/rekey", s.requireSession(s.handleSettingsRekey))
+
 	mux.HandleFunc("GET /file", s.requireSession(s.handleFileForm))
 	mux.HandleFunc("POST /file/encrypt", s.requireSession(s.handleFileEncrypt))
 	mux.HandleFunc("POST /file/decrypt", s.requireSession(s.handleFileDecrypt))

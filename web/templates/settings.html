@@ -1,0 +1,24 @@
+{{define "content"}}
+<h1>Settings</h1>
+
+<div class="card">
+  <h2>Change Master Password</h2>
+  <form method="post" action="/settings/rekey">
+    <label for="current_password">Current master password</label>
+    <input type="password" id="current_password" name="current_password" required>
+    <label for="new_password">New master password</label>
+    <input type="password" id="new_password" name="new_password" required>
+    <label for="confirm_password">Confirm new master password</label>
+    <input type="password" id="confirm_password" name="confirm_password" required>
+    <div style="margin-top: 1rem;">
+      <button type="submit">Re-encrypt vault</button>
+    </div>
+  </form>
+  <p class="entry-sub" style="margin-top: 0.75rem;">
+    Every entry, TOTP secret, and note is re-encrypted under a freshly
+    derived key with a new random salt. The vault is verified with the new
+    password before this form redirects you to re-authenticate — you'll
+    need to sign in again on the next page.
+  </p>
+</div>
+{{end}}

@@ -57,6 +57,8 @@ func Run(args []string) int {
 		return cmdDecrypt(args[1:])
 	case "health":
 		return cmdHealth(args[1:])
+	case "rekey":
+		return cmdRekey(args[1:])
 	case "help", "-h", "--help":
 		printUsage()
 		return 0
@@ -87,6 +89,7 @@ Usage:
   zerovault encrypt <file> [-o out.enc]   encrypt any file with AES-256-GCM
   zerovault decrypt <file.enc> [-o out]   decrypt a ZeroVault-encrypted file
   zerovault health                        print a vault password health report
+  zerovault rekey                         change the vault's master password
 
 Note: flags must come before the entry name.
 

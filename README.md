@@ -114,6 +114,22 @@ zerovault serve                                        # http://127.0.0.1:8787
 zerovault serve -addr 127.0.0.1:9000                    # custom port, still loopback-only
 ```
 
+### Master password rotation
+
+```bash
+zerovault rekey    # change the vault's master password
+```
+
+Prompts for the current password, decrypts, prompts for a new password
+(with confirmation), then re-encrypts every entry, TOTP secret, and note
+under a freshly derived key with a brand-new random salt — the same
+`vault.Save` path used everywhere else, so the write is atomic (temp file
++ rename) and a crash mid-rekey leaves either the untouched old vault or
+the fully-written new one. `vault.Rekey` verifies the new password by
+loading the vault back before returning. Also available from the
+dashboard's Settings page, which signs you out afterward since the
+session's old password no longer matches what's on disk.
+
 ### File encryption
 
 ```bash

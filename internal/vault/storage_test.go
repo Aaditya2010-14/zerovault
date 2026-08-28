@@ -1,6 +1,8 @@
 package vault
 
 import (
+	"bytes"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -94,6 +96,88 @@ func TestExists(t *testing.T) {
 
 	if !Exists(path) {
 		t.Fatalf("Exists returned false after file was created")
+	}
+}
+
+func TestRekey_ChangesEncryptionAndPreservesEntries(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.vault")
+
+	v := New()
+	if _, err := v.Add("github", "octocat", "hunter2", "https://github.com", "notes"); err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	if _, err := v.AddTOTP("github", testSecret, 6, 30); err != nil {
+		t.Fatalf("AddTOTP: %v", err)
+	}
+	if err := Save(path, "old-pw", v); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rekeyed, err := Rekey(path, "old-pw", "new-pw")
+	if err != nil {
+		t.Fatalf("Rekey: %v", err)
+	}
+
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(before, after) {
+		t.Fatal("expected vault file bytes to change after rekey (new salt/key)")
+	}
+
+	if _, err := Load(path, "old-pw"); err == nil {
+		t.Fatal("expected old password to no longer work after rekey")
+	}
+	if _, err := Load(path, "new-pw"); err != nil {
+		t.Fatalf("expected new password to work after rekey: %v", err)
+	}
+
+	entry, err := rekeyed.Get("github")
+	if err != nil {
+		t.Fatalf("entry lost during rekey: %v", err)
+	}
+	if entry.Password != "hunter2" {
+		t.Fatalf("entry password mismatch after rekey: got %q", entry.Password)
+	}
+	totpEntry, err := rekeyed.GetTOTP("github")
+	if err != nil {
+		t.Fatalf("TOTP entry lost during rekey: %v", err)
+	}
+	if totpEntry.Secret != testSecret {
+		t.Fatalf("TOTP secret mismatch after rekey: got %q", totpEntry.Secret)
+	}
+}
+
+func TestRekey_WrongCurrentPasswordFails(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.vault")
+
+	if err := Save(path, "correct-pw", New()); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Rekey(path, "wrong-pw", "new-pw"); err == nil {
+		t.Fatal("expected Rekey to fail with the wrong current password")
+	}
+
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatal("vault file must be untouched when rekey fails to unlock with the current password")
 	}
 }
 
