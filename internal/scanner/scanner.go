@@ -191,6 +191,79 @@ func ScanFile(path string, minEntropy float64) ([]Finding, error) {
 	return findings, nil
 }
 
+// ScanBytes runs the same pattern + entropy detection ScanFile applies to
+// a file on disk, but against an in-memory byte slice. This is what the
+// git history scanner (internal/gitscan) uses to scan blob content pulled
+// straight out of .git/objects — there's no file on disk to open, since
+// the content only exists inside a historical commit.
+func ScanBytes(name string, data []byte, minEntropy float64) []Finding {
+	if isBinaryData(data) {
+		return nil
+	}
+
+	var findings []Finding
+	lineScanner := bufio.NewScanner(bytes.NewReader(data))
+	lineScanner.Buffer(make([]byte, 64*1024), 1024*1024)
+
+	lineNum := 0
+	for lineScanner.Scan() {
+		lineNum++
+		line := lineScanner.Text()
+
+		var lineFindings []Finding
+		hasCritical := false
+		for _, p := range Patterns {
+			if loc := p.Regex.FindStringIndex(line); loc != nil {
+				lineFindings = append(lineFindings, Finding{
+					File:     name,
+					Line:     lineNum,
+					Pattern:  p.Name,
+					Severity: p.Severity,
+					Match:    redact(line[loc[0]:loc[1]]),
+				})
+				if p.Severity == SeverityCritical {
+					hasCritical = true
+				}
+			}
+		}
+		if hasCritical {
+			kept := lineFindings[:0]
+			for _, f := range lineFindings {
+				if f.Pattern == "Generic API Key Assignment" || f.Pattern == "Generic Secret Assignment" {
+					continue
+				}
+				kept = append(kept, f)
+			}
+			lineFindings = kept
+		}
+		findings = append(findings, lineFindings...)
+
+		if len(lineFindings) == 0 {
+			if m := assignmentPattern.FindStringSubmatch(line); m != nil {
+				value := m[2]
+				if entropy := ShannonEntropy(value); entropy >= minEntropy {
+					findings = append(findings, Finding{
+						File:     name,
+						Line:     lineNum,
+						Pattern:  fmt.Sprintf("High-Entropy Secret Assignment (entropy %.1f)", entropy),
+						Severity: SeverityWarning,
+						Match:    redact(value),
+					})
+				}
+			}
+		}
+	}
+	return findings
+}
+
+func isBinaryData(data []byte) bool {
+	n := len(data)
+	if n > 8192 {
+		n = 8192
+	}
+	return bytes.IndexByte(data[:n], 0) != -1
+}
+
 // isBinary sniffs the first 8KB of f for a NUL byte, the standard
 // heuristic for distinguishing text from binary content.
 func isBinary(f *os.File) bool {
