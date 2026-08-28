@@ -43,6 +43,8 @@ func Run(args []string) int {
 		return cmdDelete(args[1:])
 	case "generate":
 		return cmdGenerate(args[1:])
+	case "totp":
+		return cmdTOTP(args[1:])
 	case "help", "-h", "--help":
 		printUsage()
 		return 0
@@ -63,6 +65,9 @@ Usage:
   zerovault list                          list all entry names
   zerovault delete <name>                 delete an entry
   zerovault generate [options]            generate a random password
+  zerovault totp add [-digits N] [-period N] <name>   add a TOTP 2FA secret
+  zerovault totp get <name>               show the current TOTP code
+  zerovault totp list                     list all TOTP entries with live codes
   zerovault serve [-addr host:port]       start the web dashboard
 
 Note: flags must come before the entry name.

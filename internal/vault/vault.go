@@ -23,16 +23,17 @@ type Entry struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// Vault is the decrypted, in-memory contents of a vault file: a set of
-// credential entries keyed by their unique ID.
+// Vault is the decrypted, in-memory contents of a vault file: password
+// entries and TOTP entries, both keyed by name within their own set.
 type Vault struct {
-	Version int      `json:"version"`
-	Entries []*Entry `json:"entries"`
+	Version     int          `json:"version"`
+	Entries     []*Entry     `json:"entries"`
+	TOTPEntries []*TOTPEntry `json:"totp_entries"`
 }
 
 // New creates an empty vault.
 func New() *Vault {
-	return &Vault{Version: 1, Entries: []*Entry{}}
+	return &Vault{Version: 1, Entries: []*Entry{}, TOTPEntries: []*TOTPEntry{}}
 }
 
 // Add inserts a new entry with a fresh UUID and returns it. name must be

@@ -32,6 +32,33 @@ func TestSaveLoad_RoundTrip(t *testing.T) {
 	}
 }
 
+func TestSaveLoad_TOTPRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test.vault")
+
+	v := New()
+	if _, err := v.AddTOTP("github", testSecret, 6, 30); err != nil {
+		t.Fatalf("AddTOTP: %v", err)
+	}
+
+	if err := Save(path, "master-pw", v); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	loaded, err := Load(path, "master-pw")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	entry, err := loaded.GetTOTP("github")
+	if err != nil {
+		t.Fatalf("GetTOTP after Load: %v", err)
+	}
+	if entry.Secret != testSecret {
+		t.Fatalf("round-tripped TOTP secret mismatch: got %q", entry.Secret)
+	}
+}
+
 func TestLoad_WrongPasswordFails(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.vault")
