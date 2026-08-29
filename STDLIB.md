@@ -44,9 +44,9 @@ rule from the RFC; TOTP is HOTP with the counter replaced by
 `unix_time / period`. Both are small, fully specified algorithms — nothing
 about them needs a library beyond a correct HMAC.
 
-**Trade-off:** No built-in QR-code provisioning URI helpers (`otpauth://`
-generation/parsing) — ZeroVault's CLI accepts/prints raw base32 secrets
-instead of QR codes.
+**Trade-off:** No third-party QR-code library was pulled in to make
+provisioning URIs scannable either — see entry 20 for the from-scratch
+QR encoder that closes this gap instead.
 
 ## 4. Base32 secret encoding — `github.com/pquerna/otp`'s helpers
 
@@ -292,3 +292,29 @@ can never see.
 `git gc`'d into packfiles (delta-compressed, a meaningfully bigger parsing
 job — OFS_DELTA/REF_DELTA chains) isn't supported. Documented as an
 explicit edge case rather than silently producing an incomplete scan.
+
+## 20. QR code generation for TOTP enrollment — `github.com/skip2/go-qrcode`
+or similar
+
+**Used instead:** `internal/qrcode`, built from scratch on nothing but
+stdlib primitives (`encoding/binary`-style bit-packing and plain slices —
+no external QR or imaging library at all): Reed-Solomon error correction
+implemented over `GF(256)` by hand (`gf256.go`, primitive polynomial
+`0x11D`), the standard module layout — finder patterns, separators, timing
+patterns, one alignment pattern, the always-dark module (`layout.go`) —
+mask-pattern selection (`mask.go`), and both ASCII-art and SVG renderers
+(`render.go`). `zerovault totp qr <name>` feeds a standard `otpauth://totp/`
+Key URI into this encoder so any RFC 6238 authenticator app can scan it.
+
+**Why it works:** The QR code spec (ISO/IEC 18004) is a fully published,
+deterministic algorithm — encode the data, compute Reed-Solomon error
+correction codewords over `GF(256)`, place modules in the fixed pattern
+positions, XOR one of eight masks and keep whichever minimizes a documented
+penalty score. None of that requires anything beyond byte/bit manipulation
+that stdlib already provides; a third-party QR library is really just this
+same algorithm pre-written.
+
+**Trade-off:** Only one QR version/size and one error-correction level are
+implemented — enough for an `otpauth://` URI's typical length — rather than
+the full version-1-through-40 auto-sizing table a general-purpose QR
+library supports for arbitrary payloads.

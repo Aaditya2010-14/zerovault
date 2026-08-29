@@ -82,7 +82,16 @@ zerovault totp add github-2fa                        # prompts for the base32 se
 zerovault totp add github-2fa --generate              # or generate a brand-new secret
 zerovault totp get github-2fa                         # print the current 6-digit code
 zerovault totp list                                   # list all TOTP entries with live codes
+zerovault totp qr github-2fa                          # print a scannable QR code (otpauth:// URI) to the terminal
+zerovault totp qr github-2fa -svg out.svg              # write the QR code as an SVG file instead
 ```
+
+QR codes are generated entirely from stdlib primitives (`internal/qrcode`):
+Reed-Solomon error correction over `GF(256)`, module layout (finder/timing/
+alignment patterns), masking, and ASCII/SVG rendering, all hand-built — see
+`STDLIB.md` entry 20. The encoded payload is a standard `otpauth://totp/...`
+Key URI, so scanning it with Google Authenticator, Authy, or any other RFC
+6238-compatible app enrolls the same secret ZeroVault already has stored.
 
 ### Secrets scanner
 
@@ -344,7 +353,7 @@ zerovault SHA256` (Windows) or `sha256sum zerovault` (Linux/Mac).
 
 - **Package Killer (+3)** — zero third-party runtime dependencies, no
   `golang.org/x/*`, empty `go.mod` require block.
-- **STDLIB Log (+3)** — see `STDLIB.md` for 19 documented stdlib
+- **STDLIB Log (+3)** — see `STDLIB.md` for 20 documented stdlib
   substitutions.
 - **Reproducible Build (+5)** — see above; two independent clean builds
   produce byte-identical SHA-256 hashes.
