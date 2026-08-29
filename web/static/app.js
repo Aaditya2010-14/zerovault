@@ -1,5 +1,23 @@
 // Minimal vanilla JS — no framework, no build step.
 
+// Password field show/hide: [data-toggle-password] sits next to a
+// .password-field's input. Toggling flips the input between password
+// (dots) and text, and swaps which eye icon (open/closed) is visible —
+// letting people actually verify what they typed before submitting, so a
+// master password set (or changed) blind never happens again.
+document.addEventListener("click", function (e) {
+  var btn = e.target.closest("[data-toggle-password]");
+  if (!btn) return;
+  var field = btn.closest(".password-field");
+  var input = field && field.querySelector("input");
+  if (!input) return;
+
+  var revealed = input.type === "text";
+  input.type = revealed ? "password" : "text";
+  btn.classList.toggle("revealed", !revealed);
+  btn.setAttribute("aria-label", revealed ? "Show password" : "Hide password");
+});
+
 // TOTP countdown rings: each [data-totp-ring] holds the server-computed
 // seconds-until-refresh and period at page load. Count down client-side,
 // animating the ring's stroke-dashoffset, and reload once any ring hits

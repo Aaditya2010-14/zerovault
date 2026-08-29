@@ -14,7 +14,10 @@
     </div>
     <input type="file" id="enc-file" name="file" required style="display:none;">
     <label for="enc-password">Password</label>
-    <input type="password" id="enc-password" name="password" required>
+    <div class="password-field">
+      <input type="password" id="enc-password" name="password" required>
+      {{template "password-toggle-btn"}}
+    </div>
     <div style="margin-top: 1rem;">
       <button type="submit">Encrypt &amp; download</button>
     </div>
@@ -38,7 +41,10 @@
     </div>
     <input type="file" id="dec-file" name="file" required style="display:none;">
     <label for="dec-password">Password</label>
-    <input type="password" id="dec-password" name="password" required>
+    <div class="password-field">
+      <input type="password" id="dec-password" name="password" required>
+      {{template "password-toggle-btn"}}
+    </div>
     <div style="margin-top: 1rem;">
       <button type="submit">Decrypt &amp; download</button>
     </div>

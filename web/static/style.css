@@ -255,6 +255,53 @@ button:focus-visible, .btn:focus-visible {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+/* Password input + show/hide eye toggle, far right of the field. Hidden by
+   default (dots); the eye icon reflects the current state — open when the
+   password is visible, closed (slashed) when it's masked. Overrides the
+   generic button/.btn styling above since this is an icon-only overlay. */
+.password-field {
+  position: relative;
+}
+.password-field input[type="password"],
+.password-field input[type="text"] {
+  padding-right: 2.75rem;
+}
+.password-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color 0.15s var(--ease), background 0.15s var(--ease), transform 0.1s var(--ease);
+}
+.password-toggle:hover {
+  background: var(--bg-soft);
+  border-color: transparent;
+  color: var(--accent);
+}
+.password-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.password-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+.password-toggle .eye-closed { display: none; }
+.password-toggle.revealed .eye-open { display: none; }
+.password-toggle.revealed .eye-closed { display: block; }
+
 .btn-danger {
   background: var(--danger);
   border-color: var(--danger);

@@ -20,6 +20,7 @@ func loadTemplates() (templateSet, error) {
 	for _, page := range pages {
 		tmpl, err := template.ParseFS(zerovault.TemplateFiles,
 			"web/templates/layout.html",
+			"web/templates/partials.html",
 			fmt.Sprintf("web/templates/%s.html", page),
 		)
 		if err != nil {

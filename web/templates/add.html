@@ -13,7 +13,10 @@
     <input type="text" id="username" name="username">
 
     <label for="password">Password</label>
-    <input type="text" id="password" name="password" class="mono">
+    <div class="password-field">
+      <input type="password" id="password" name="password" class="mono">
+      {{template "password-toggle-btn"}}
+    </div>
 
     <label for="url">URL</label>
     <input type="url" id="url" name="url">

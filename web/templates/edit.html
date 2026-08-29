@@ -11,7 +11,10 @@
     <input type="text" id="username" name="username" value="{{.Entry.Username}}">
 
     <label for="password">Password</label>
-    <input type="text" id="password" name="password" class="mono" placeholder="leave blank to keep current password">
+    <div class="password-field">
+      <input type="password" id="password" name="password" class="mono" placeholder="leave blank to keep current password">
+      {{template "password-toggle-btn"}}
+    </div>
 
     <label for="url">URL</label>
     <input type="url" id="url" name="url" value="{{.Entry.URL}}">
