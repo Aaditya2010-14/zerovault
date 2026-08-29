@@ -61,9 +61,20 @@ func AlphabetSize(opts PasswordOptions) int {
 // GeneratePassword produces a random password drawn uniformly from the
 // requested character classes using crypto/rand for every character choice
 // (rejection sampling avoids modulo bias).
+// MaxGeneratedLength caps requested password length: comfortably above any
+// realistic use (item: "1000 characters should work") while rejecting a
+// pathological request (e.g. a web form field tampered with to ask for
+// hundreds of millions of characters) before it can allocate an
+// unreasonable amount of memory or spend unreasonable time drawing random
+// bytes one at a time.
+const MaxGeneratedLength = 100_000
+
 func GeneratePassword(opts PasswordOptions) (string, error) {
 	if opts.Length <= 0 {
 		return "", fmt.Errorf("crypto: password length must be positive, got %d", opts.Length)
+	}
+	if opts.Length > MaxGeneratedLength {
+		return "", fmt.Errorf("crypto: password length %d exceeds the maximum of %d", opts.Length, MaxGeneratedLength)
 	}
 
 	var alphabet string

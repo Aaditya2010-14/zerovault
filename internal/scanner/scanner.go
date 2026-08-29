@@ -54,6 +54,14 @@ var binaryExtensions = map[string]bool{
 // ScanDir walks root recursively and returns every Finding across all
 // scannable files, sorted by file then line for stable, readable output.
 func ScanDir(root string, opts Options) ([]Finding, error) {
+	info, err := os.Stat(root)
+	if err != nil {
+		return nil, fmt.Errorf("scanner: directory not found: %s", root)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("scanner: not a directory: %s", root)
+	}
+
 	skipDirs := defaultSkipDirs
 	if len(opts.SkipDirs) > 0 {
 		skipDirs = make(map[string]bool, len(defaultSkipDirs)+len(opts.SkipDirs))
@@ -74,7 +82,7 @@ func ScanDir(root string, opts Options) ([]Finding, error) {
 	}
 
 	var findings []Finding
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

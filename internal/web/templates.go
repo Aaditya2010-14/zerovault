@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -34,14 +35,25 @@ func loadTemplates() (templateSet, error) {
 // render executes the named page's layout template. html/template
 // auto-escapes all dynamic content, so no manual XSS sanitization is
 // needed for anything passed in data.
+//
+// Executed into a buffer first, not straight to w: ExecuteTemplate can
+// fail partway through (a broken client connection, a template data
+// error) after already having written some bytes — writing to w directly
+// would leave a half-rendered page on the wire and then try to call
+// http.Error on a response that already started, which is a no-op at
+// best and confusing at worst. Buffering means a failed render never
+// reaches the browser as broken HTML with a 200 status.
 func (s *Server) render(w http.ResponseWriter, page string, data any) {
 	tmpl, ok := s.templates[page]
 	if !ok {
 		http.Error(w, "template not found", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.ExecuteTemplate(w, "layout", data); err != nil {
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, "layout", data); err != nil {
 		http.Error(w, "failed to render page", http.StatusInternalServerError)
+		return
 	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(buf.Bytes())
 }

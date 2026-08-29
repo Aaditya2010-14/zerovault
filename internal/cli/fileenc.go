@@ -26,6 +26,14 @@ func cmdEncrypt(args []string) int {
 		outPath = inPath + ".enc"
 	}
 
+	if info, err := os.Stat(inPath); err != nil {
+		printError("file not found: %s", inPath)
+		return 1
+	} else if info.IsDir() {
+		printError("%q is a directory, not a file", inPath)
+		return 1
+	}
+
 	pw1, err := ReadPassword("Encryption password: ")
 	if err != nil {
 		printError("%v", err)

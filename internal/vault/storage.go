@@ -3,6 +3,8 @@ package vault
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
 	json "encoding/json/v2"
 
@@ -99,16 +101,53 @@ func Exists(path string) bool {
 	return err == nil
 }
 
-// writeFileAtomic writes data to a temp file in the same directory as path
-// and renames it into place, avoiding a truncated/corrupted vault file if
-// the process is interrupted mid-write.
+// writeFileAtomic writes data to a uniquely-named temp file in the same
+// directory as path and renames it into place, avoiding a truncated or
+// corrupted vault file if the process is interrupted mid-write. Each call
+// gets its own temp file (via os.CreateTemp, not a fixed "path.tmp" name)
+// specifically so that two saves racing against the same vault path — e.g.
+// two browser tabs open on the same session — never collide trying to
+// write or rename the same temp file out from under each other; the last
+// rename to complete simply wins, which is the same last-write-wins
+// behavior any concurrent save to one file would have anyway.
 func writeFileAtomic(path string, data []byte) error {
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, filePerm); err != nil {
-		return fmt.Errorf("vault: failed to write temp file: %w", err)
+	dir := filepath.Dir(path)
+	tmpFile, err := os.CreateTemp(dir, filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return fmt.Errorf("vault: failed to create temp file: %w", err)
 	}
-	if err := os.Rename(tmp, path); err != nil {
-		return fmt.Errorf("vault: failed to finalize vault file: %w", err)
+	tmp := tmpFile.Name()
+
+	_, writeErr := tmpFile.Write(data)
+	closeErr := tmpFile.Close()
+	if writeErr != nil {
+		os.Remove(tmp)
+		return fmt.Errorf("vault: failed to write temp file: %w", writeErr)
 	}
-	return nil
+	if closeErr != nil {
+		os.Remove(tmp)
+		return fmt.Errorf("vault: failed to write temp file: %w", closeErr)
+	}
+	if err := os.Chmod(tmp, filePerm); err != nil {
+		os.Remove(tmp)
+		return fmt.Errorf("vault: failed to set vault file permissions: %w", err)
+	}
+
+	// Retry the rename a few times: on Windows, MoveFileEx (which os.Rename
+	// uses to replace an existing destination) briefly locks the destination
+	// during the replace, so two goroutines renaming to the same path at
+	// nearly the same instant can transiently fail with "Access is denied"
+	// instead of one atomically winning as POSIX rename(2) would guarantee.
+	// Last-rename-to-succeed-wins is still the intended behavior (see the
+	// comment above); this just makes sure contention doesn't surface as a
+	// spurious save failure.
+	var renameErr error
+	for attempt := 0; attempt < 5; attempt++ {
+		if renameErr = os.Rename(tmp, path); renameErr == nil {
+			return nil
+		}
+		time.Sleep(time.Duration(attempt+1) * 10 * time.Millisecond)
+	}
+	os.Remove(tmp)
+	return fmt.Errorf("vault: failed to finalize vault file: %w", renameErr)
 }

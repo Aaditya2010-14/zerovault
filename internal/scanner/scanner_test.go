@@ -3,6 +3,7 @@ package scanner
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -170,5 +171,42 @@ func TestScanDir_SkipsLargeFiles(t *testing.T) {
 	_ = path
 	if len(findings) != 0 {
 		t.Fatalf("expected no findings when MaxFileSize excludes all files, got: %+v", findings)
+	}
+}
+
+func TestScanDir_EmptyDirectoryReturnsNoFindings(t *testing.T) {
+	dir := t.TempDir()
+
+	findings, err := ScanDir(dir, Options{})
+	if err != nil {
+		t.Fatalf("ScanDir on empty dir: %v", err)
+	}
+	if len(findings) != 0 {
+		t.Fatalf("expected 0 findings for empty dir, got %d", len(findings))
+	}
+}
+
+func TestScanDir_NonexistentDirectoryReturnsClearError(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "does_not_exist")
+
+	_, err := ScanDir(dir, Options{})
+	if err == nil {
+		t.Fatalf("expected error scanning a nonexistent directory")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("expected a clear 'not found' error, got: %v", err)
+	}
+}
+
+func TestScanDir_FileInsteadOfDirectoryReturnsClearError(t *testing.T) {
+	dir := t.TempDir()
+	path := writeTestFile(t, dir, "notadir.txt", "just a file")
+
+	_, err := ScanDir(path, Options{})
+	if err == nil {
+		t.Fatalf("expected error scanning a file path as if it were a directory")
+	}
+	if !strings.Contains(err.Error(), "not a directory") {
+		t.Fatalf("expected a clear 'not a directory' error, got: %v", err)
 	}
 }

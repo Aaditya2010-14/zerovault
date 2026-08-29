@@ -210,6 +210,11 @@ func cmdAdd(args []string) int {
 		password = pw
 	}
 
+	if password == "" {
+		printError("entry password must not be empty")
+		return 1
+	}
+
 	if _, err := v.Add(name, *username, password, *url, *notes); err != nil {
 		printError("%v", err)
 		return 1

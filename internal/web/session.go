@@ -22,7 +22,19 @@ const sessionCookieName = "zerovault_session"
 // unlocked browser session. The master password is kept only in memory
 // (never written to disk or logged) so the vault can be re-encrypted and
 // saved after mutations.
+//
+// mu serializes every request that touches this session: the same session
+// (same browser, or the same account open in two tabs) can receive
+// genuinely concurrent requests, and sess.vault's Entries/TOTPEntries are
+// plain slices with no synchronization of their own — a concurrent
+// append/read (e.g. one tab adding an entry while another lists them) is a
+// real data race that can panic mid-JSON-marshal, and two concurrent Save
+// calls also collide on the same on-disk temp file. requireSession holds
+// mu for the whole handler, which trades a little concurrency for
+// correctness — acceptable here since this is a single-user local
+// dashboard, not a multi-tenant server.
 type session struct {
+	mu        sync.Mutex
 	vault     *vault.Vault
 	masterPw  string
 	vaultPath string
@@ -109,6 +121,10 @@ func (s *Server) requireSession(next http.HandlerFunc) http.HandlerFunc {
 			http.Redirect(w, r, "/unlock", http.StatusSeeOther)
 			return
 		}
+		// Serialize every request against this session — see the mu field
+		// comment on session for why this is necessary, not just cautious.
+		sess.mu.Lock()
+		defer sess.mu.Unlock()
 		ctx := context.WithValue(r.Context(), sessionContextKey, sess)
 		next(w, r.WithContext(ctx))
 	}

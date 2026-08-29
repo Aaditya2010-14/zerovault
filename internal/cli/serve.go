@@ -1,9 +1,14 @@
 package cli
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
+	"time"
 
 	"zerovault/internal/web"
 )
@@ -36,14 +41,44 @@ func cmdServe(args []string) int {
 		return 1
 	}
 
+	httpSrv := &http.Server{Addr: *addr, Handler: handler}
+
 	printSuccess("ZeroVault dashboard running at http://%s", *addr)
 	printInfo("press Ctrl+C to stop")
 
-	if err := http.ListenAndServe(*addr, handler); err != nil {
-		printError("server error: %v", err)
-		return 1
+	// Ctrl+C (os.Interrupt) triggers a graceful http.Server.Shutdown rather
+	// than letting the OS kill the process mid-request: Shutdown stops
+	// accepting new connections and waits (up to shutdownTimeout) for
+	// in-flight requests — like a save mid-write — to finish cleanly.
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- httpSrv.ListenAndServe() }()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	select {
+	case err := <-serveErr:
+		if err != nil && err != http.ErrServerClosed {
+			printError("server error: %v", err)
+			return 1
+		}
+		return 0
+	case <-ctx.Done():
+		stop()
+		fmt.Println()
+		printInfo("shutting down...")
+
+		const shutdownTimeout = 5 * time.Second
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+
+		if err := httpSrv.Shutdown(shutdownCtx); err != nil {
+			printError("forced shutdown after %s: %v", shutdownTimeout, err)
+			return 1
+		}
+		printSuccess("server stopped cleanly")
+		return 0
 	}
-	return 0
 }
 
 func isLoopbackHost(host string) bool {

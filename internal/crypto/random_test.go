@@ -63,3 +63,35 @@ func TestGeneratePassword_ZeroLengthErrors(t *testing.T) {
 		t.Fatalf("expected error for zero length")
 	}
 }
+
+func TestGeneratePassword_NegativeLengthErrors(t *testing.T) {
+	if _, err := GeneratePassword(PasswordOptions{Length: -5, Lower: true}); err == nil {
+		t.Fatalf("expected error for negative length")
+	}
+}
+
+func TestGeneratePassword_LargeLengthWorks(t *testing.T) {
+	pw, err := GeneratePassword(PasswordOptions{Length: 1000, Lower: true, Upper: true, Digits: true, Symbols: true})
+	if err != nil {
+		t.Fatalf("GeneratePassword: %v", err)
+	}
+	if len(pw) != 1000 {
+		t.Fatalf("got length %d, want 1000", len(pw))
+	}
+}
+
+func TestGeneratePassword_ExceedsMaxLengthErrors(t *testing.T) {
+	if _, err := GeneratePassword(PasswordOptions{Length: MaxGeneratedLength + 1, Lower: true}); err == nil {
+		t.Fatalf("expected error for length exceeding MaxGeneratedLength")
+	}
+}
+
+func TestGeneratePassword_AtMaxLengthWorks(t *testing.T) {
+	pw, err := GeneratePassword(PasswordOptions{Length: MaxGeneratedLength, Lower: true})
+	if err != nil {
+		t.Fatalf("GeneratePassword at max length: %v", err)
+	}
+	if len(pw) != MaxGeneratedLength {
+		t.Fatalf("got length %d, want %d", len(pw), MaxGeneratedLength)
+	}
+}

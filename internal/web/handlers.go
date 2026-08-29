@@ -555,7 +555,7 @@ func (s *Server) handleGenerateSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	length, err := strconv.Atoi(r.FormValue("length"))
-	if err != nil || length <= 0 {
+	if err != nil {
 		length = 20
 	}
 	data := generateData{
@@ -566,6 +566,12 @@ func (s *Server) handleGenerateSubmit(w http.ResponseWriter, r *http.Request) {
 		Digits:   r.FormValue("digits") == "on",
 		Symbols:  r.FormValue("symbols") == "on",
 	}
+	// A non-numeric length silently falls back to 20 above (the length field
+	// is a slider that always submits some number, so a parse failure means
+	// the field was empty or missing, not a deliberate bad request). A
+	// parsed-but-out-of-range length (0, negative, or too large) is a
+	// deliberate value, so it goes to GeneratePassword below and comes back
+	// as a clear data.Error instead of being silently coerced.
 
 	pw, err := vcrypto.GeneratePassword(vcrypto.PasswordOptions{
 		Length: length, Upper: data.Upper, Lower: data.Lower, Digits: data.Digits, Symbols: data.Symbols,

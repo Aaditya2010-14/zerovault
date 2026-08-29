@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -8,6 +9,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -263,6 +265,62 @@ func TestCrossOriginPOST_Rejected(t *testing.T) {
 	body, _ := io.ReadAll(dash.Body)
 	if strings.Contains(string(body), "hacked") {
 		t.Fatalf("cross-origin POST was not actually blocked — entry was added: %s", body)
+	}
+}
+
+// TestConcurrentAddRequests_NoDataRaceOrCorruption guards against the panic
+// found via `go build -race` plus a genuine concurrent-client stress test:
+// sess.vault.Entries is a plain slice with no synchronization of its own, so
+// concurrent requests against the same session used to race an append
+// against vault.Save's JSON marshal and could panic mid-marshal. requireSession
+// now holds a per-session mutex for the whole handler call, serializing
+// requests against one session. Run with `go test -race` to actually catch a
+// regression here — without -race this only checks the end state.
+func TestConcurrentAddRequests_NoDataRaceOrCorruption(t *testing.T) {
+	ts := newTestServer(t)
+	client := newTestClient(t)
+	unlockNewVault(t, ts, client, "testpass123")
+
+	const n = 30
+	var wg sync.WaitGroup
+	errs := make([]error, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			resp, err := client.PostForm(ts.URL+"/add", url.Values{
+				"name":     {fmt.Sprintf("entry-%d", i)},
+				"password": {"pw"},
+			})
+			if err != nil {
+				errs[i] = err
+				return
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusSeeOther {
+				errs[i] = fmt.Errorf("entry-%d: got status %d, want 303", i, resp.StatusCode)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	for _, err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	resp, err := client.Get(ts.URL + "/dashboard")
+	if err != nil {
+		t.Fatalf("GET /dashboard: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	for i := 0; i < n; i++ {
+		name := fmt.Sprintf("entry-%d", i)
+		if !strings.Contains(string(body), name) {
+			t.Fatalf("dashboard missing %q after %d concurrent adds — possible lost write", name, n)
+		}
 	}
 }
 

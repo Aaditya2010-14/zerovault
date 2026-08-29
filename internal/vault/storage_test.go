@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -201,5 +202,58 @@ func TestSave_SaltDiffersEachTime(t *testing.T) {
 	}
 	if _, err := Load(path2, "same-pw"); err != nil {
 		t.Fatalf("Load path2: %v", err)
+	}
+}
+
+// TestSave_ConcurrentSavesToSamePathDoNotCorrupt guards against the temp-file
+// collision bug fixed in writeFileAtomic: two goroutines racing to Save the
+// same vault path used to collide on a single fixed "path.tmp" name (one
+// writer's os.Rename could fail, or on some platforms clobber the other
+// writer's in-progress temp file). Each Save now gets a unique temp file via
+// os.CreateTemp, so concurrent saves should never error and the file left
+// behind afterward must always be a complete, loadable vault (last-write-wins
+// is fine; corruption is not).
+func TestSave_ConcurrentSavesToSamePathDoNotCorrupt(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "concurrent.vault")
+
+	const n = 20
+	var wg sync.WaitGroup
+	errs := make([]error, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			v := New()
+			if _, err := v.Add("entry", "user", "pw", "", ""); err != nil {
+				errs[i] = err
+				return
+			}
+			errs[i] = Save(path, "same-pw", v)
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent Save %d failed: %v", i, err)
+		}
+	}
+
+	// The file left behind must be a fully-formed, loadable vault — not a
+	// half-written or corrupted one from a botched rename.
+	if _, err := Load(path, "same-pw"); err != nil {
+		t.Fatalf("Load after concurrent saves: %v", err)
+	}
+
+	// No stray *.tmp files should be left behind in the directory.
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if filepath.Ext(e.Name()) == ".tmp" {
+			t.Fatalf("leftover temp file after concurrent saves: %s", e.Name())
+		}
 	}
 }
