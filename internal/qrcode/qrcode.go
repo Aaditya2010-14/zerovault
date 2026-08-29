@@ -35,7 +35,7 @@ var versionInfo = []struct {
 	dataCodewords int // total data codewords (mode+count+payload+padding)
 	eccCodewords  int
 }{
-	{}, // index 0 unused, versions are 1-based
+	{},        // index 0 unused, versions are 1-based
 	{19, 7},   // v1: 21x21
 	{34, 10},  // v2: 25x25
 	{55, 15},  // v3: 29x29

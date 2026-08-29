@@ -26,10 +26,6 @@ var xssPayloads = []string{
 	`{{.MasterPassword}}`,
 }
 
-// dangerousTags is what "the payload actually executed as HTML" would
-// look like verbatim in the response body.
-var dangerousTags = []string{"<script>", "<img ", "<svg", "<iframe", "<body "}
-
 type xssProbe struct {
 	payload      string
 	entryName    string
@@ -68,16 +64,37 @@ func storeAndFetch(client *http.Client, baseURL, entryName, payload string) xssP
 	return probe
 }
 
-// executed reports whether any raw, unescaped dangerous tag made it into
-// the response — the one thing html/template's auto-escaping must never
-// allow.
+// templateInjectionProbe is the one payload where literal survival is the
+// SAFE outcome (html/template must never re-evaluate it), so it can't share
+// the "did the literal payload survive" logic used for the HTML payloads.
+const templateInjectionProbe = `{{.MasterPassword}}`
+
+// executed reports whether the payload actually took effect against
+// html/template's defenses. For HTML/attribute payloads that means the
+// exact payload survived byte-for-byte in the response body unescaped —
+// matching the literal payload (rather than a generic list of dangerous tag
+// prefixes) avoids false positives from unrelated, legitimate markup
+// elsewhere on the page (e.g. inline <svg> icons) that happen to share a
+// substring with a payload's tag name. For the template-injection probe,
+// the safe outcome is the opposite: the literal `{{.MasterPassword}}` text
+// must survive unevaluated, so its disappearance (replaced by an evaluated
+// value) is what would indicate a vulnerability.
 func (p xssProbe) executed() bool {
-	for _, tag := range dangerousTags {
-		if strings.Contains(p.responseBody, tag) {
-			return true
-		}
+	if p.payload == "" {
+		return false
 	}
-	return false
+	if p.payload == templateInjectionProbe {
+		return !strings.Contains(p.responseBody, templateInjectionProbe)
+	}
+	// A payload with no HTML metacharacters is rendered identically whether
+	// or not escaping ran, so its literal presence proves nothing (e.g.
+	// "javascript:alert(1)" is inert text here — it's never placed in an
+	// href/src attribute this app renders). Only payloads escaping can
+	// actually neutralize are meaningful to check this way.
+	if !strings.ContainsAny(p.payload, `<>&'"`) {
+		return false
+	}
+	return strings.Contains(p.responseBody, p.payload)
 }
 
 // runXSSSuite spins up the real dashboard, unlocks it over real HTTP, and

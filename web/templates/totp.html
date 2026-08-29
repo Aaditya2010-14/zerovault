@@ -54,7 +54,7 @@
     <text x="22" y="26" text-anchor="middle" data-totp-ring-text>{{$.Remaining}}</text>
   </svg>
   <div class="totp-card-actions">
-    <button type="button" class="icon-btn" data-copy="{{.Code}}" title="Copy code">📋</button>
+    <button type="button" class="icon-btn" data-copy="{{.Code}}" title="Copy code">{{template "copy-icon"}}</button>
     <button type="button" class="icon-btn" data-toggle-target="qr-{{.Name}}" title="Show QR code">{{template "qr-icon"}}</button>
     <form method="post" action="/totp/delete/{{.Name}}" data-confirm="Delete TOTP entry {{.Name}}?" style="display:inline;">
       <button type="submit" class="icon-btn icon-btn-danger" title="Delete">{{template "trash-icon"}}</button>

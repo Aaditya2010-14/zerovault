@@ -11,7 +11,7 @@
   <div class="detail-row">
     <div class="detail-row-label">Username</div>
     <div class="detail-row-value">{{.Entry.Username}}</div>
-    <button type="button" class="icon-btn" data-copy="{{.Entry.Username}}" title="Copy username">📋</button>
+    <button type="button" class="icon-btn" data-copy="{{.Entry.Username}}" title="Copy username">{{template "copy-icon"}}</button>
   </div>
   {{end}}
 
@@ -20,8 +20,8 @@
     <div class="detail-row-value mono">
       <span class="secret" data-secret="{{.Entry.Password}}">••••••••</span>
     </div>
-    <button type="button" class="icon-btn" data-toggle-secret title="Show/hide">👁</button>
-    <button type="button" class="icon-btn" data-copy="{{.Entry.Password}}" title="Copy password">📋</button>
+    <button type="button" class="icon-btn eye-toggle" data-toggle-secret title="Show/hide" aria-label="Show password">{{template "eye-toggle-icon"}}</button>
+    <button type="button" class="icon-btn" data-copy="{{.Entry.Password}}" title="Copy password">{{template "copy-icon"}}</button>
   </div>
 
   {{if .Entry.URL}}

@@ -204,11 +204,13 @@ document.addEventListener("click", function (e) {
   if (revealed) {
     span.textContent = "••••••••";
     span.setAttribute("data-revealed", "false");
-    btn.textContent = "Show";
+    btn.classList.remove("revealed");
+    btn.setAttribute("aria-label", "Show password");
   } else {
     span.textContent = span.getAttribute("data-secret");
     span.setAttribute("data-revealed", "true");
-    btn.textContent = "Hide";
+    btn.classList.add("revealed");
+    btn.setAttribute("aria-label", "Hide password");
   }
 });
 

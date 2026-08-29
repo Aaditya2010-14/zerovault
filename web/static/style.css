@@ -298,9 +298,9 @@ button:focus-visible, .btn:focus-visible {
   width: 18px;
   height: 18px;
 }
-.password-toggle .eye-closed { display: none; }
-.password-toggle.revealed .eye-open { display: none; }
-.password-toggle.revealed .eye-closed { display: block; }
+.eye-toggle .eye-closed { display: none; }
+.eye-toggle.revealed .eye-open { display: none; }
+.eye-toggle.revealed .eye-closed { display: block; }
 
 .btn-danger {
   background: var(--danger);

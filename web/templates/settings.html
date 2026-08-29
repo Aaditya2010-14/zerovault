@@ -100,7 +100,7 @@
   </div>
   <p class="entry-sub">Permanently removes every entry and TOTP secret from this vault. This cannot be undone.</p>
   <form method="post" action="/settings/delete-all" data-confirm="Delete ALL entries and TOTP secrets from this vault? This cannot be undone.">
-    <button type="submit" class="btn-danger">Delete all vault data</button>
+    <button type="submit" class="btn-danger">{{template "trash-icon"}} Delete all vault data</button>
   </form>
 </div>
 {{end}}
