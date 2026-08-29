@@ -1,11 +1,18 @@
 {{define "content"}}
 <h1>File Encryption</h1>
 
-<div class="card">
-  <h2>Encrypt a file</h2>
+<div class="card file-card-encrypt">
+  <div class="card-icon-header">
+    <span class="icon-badge icon-badge-accent">🔒</span>
+    <h2>Encrypt a file</h2>
+  </div>
   <form method="post" action="/file/encrypt" enctype="multipart/form-data">
-    <label for="enc-file">File to encrypt</label>
-    <input type="file" id="enc-file" name="file" required>
+    <div class="drop-zone" data-drop-zone data-target="enc-file">
+      <span class="drop-zone-icon">📄</span>
+      <span data-drop-zone-text>Drag &amp; drop a file here, or click to browse</span>
+      <div class="drop-zone-filename" data-drop-zone-filename></div>
+    </div>
+    <input type="file" id="enc-file" name="file" required style="display:none;">
     <label for="enc-password">Password</label>
     <input type="password" id="enc-password" name="password" required>
     <div style="margin-top: 1rem;">
@@ -18,11 +25,18 @@
   </p>
 </div>
 
-<div class="card">
-  <h2>Decrypt a file</h2>
+<div class="card file-card-decrypt">
+  <div class="card-icon-header">
+    <span class="icon-badge icon-badge-success">🔓</span>
+    <h2>Decrypt a file</h2>
+  </div>
   <form method="post" action="/file/decrypt" enctype="multipart/form-data">
-    <label for="dec-file">ZeroVault-encrypted file</label>
-    <input type="file" id="dec-file" name="file" required>
+    <div class="drop-zone" data-drop-zone data-target="dec-file">
+      <span class="drop-zone-icon">🔐</span>
+      <span data-drop-zone-text>Drag &amp; drop a ZeroVault-encrypted file here, or click to browse</span>
+      <div class="drop-zone-filename" data-drop-zone-filename></div>
+    </div>
+    <input type="file" id="dec-file" name="file" required style="display:none;">
     <label for="dec-password">Password</label>
     <input type="password" id="dec-password" name="password" required>
     <div style="margin-top: 1rem;">
@@ -34,5 +48,15 @@
     metadata. A wrong password or a tampered/truncated file is rejected
     outright.
   </p>
+</div>
+
+<div class="card">
+  <h2>How it works</h2>
+  <div class="steps-list">
+    <div class="step-item"><span class="step-num"></span><span>Your file is buffered server-side in a temp directory that only this process can read, never written anywhere the browser could collide with it.</span></div>
+    <div class="step-item"><span class="step-num"></span><span>A key is derived from your password with PBKDF2 and a fresh random salt — the same derivation the vault itself uses.</span></div>
+    <div class="step-item"><span class="step-num"></span><span>The file is encrypted with AES-256-GCM in 64KB chunks, so large files never need to fit entirely in memory.</span></div>
+    <div class="step-item"><span class="step-num"></span><span>The result streams back to your browser as a download, and every temp file is deleted before the request finishes.</span></div>
+  </div>
 </div>
 {{end}}

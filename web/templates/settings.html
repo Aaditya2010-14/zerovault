@@ -2,7 +2,69 @@
 <h1>Settings</h1>
 
 <div class="card">
-  <h2>Change Master Password</h2>
+  <div class="card-icon-header">
+    <span class="icon-badge icon-badge-accent">🗄</span>
+    <h2>Vault Info</h2>
+  </div>
+  <div class="info-grid">
+    <div class="info-grid-item">
+      <div class="info-grid-label">Vault path</div>
+      <div class="info-grid-value">{{.VaultPath}}</div>
+    </div>
+    <div class="info-grid-item">
+      <div class="info-grid-label">File size</div>
+      <div class="info-grid-value">{{.VaultSize}} bytes</div>
+    </div>
+    <div class="info-grid-item">
+      <div class="info-grid-label">Entries</div>
+      <div class="info-grid-value">{{.EntryCount}}</div>
+    </div>
+    <div class="info-grid-item">
+      <div class="info-grid-label">TOTP secrets</div>
+      <div class="info-grid-value">{{.TOTPCount}}</div>
+    </div>
+    <div class="info-grid-item">
+      <div class="info-grid-label">Entries with notes</div>
+      <div class="info-grid-value">{{.NotesCount}}</div>
+    </div>
+    <div class="info-grid-item">
+      <div class="info-grid-label">Last modified</div>
+      <div class="info-grid-value">{{.LastModified}}</div>
+    </div>
+    <div class="info-grid-item">
+      <div class="info-grid-label">Go runtime</div>
+      <div class="info-grid-value">{{.GoVersion}}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-icon-header">
+    <span class="icon-badge icon-badge-success">⬇</span>
+    <h2>Export</h2>
+  </div>
+  <div class="export-group">
+    <h3>Encrypted backup</h3>
+    <p class="entry-sub">The vault file exactly as it sits on disk — still AES-256-GCM encrypted under your current master password.</p>
+    <div class="export-actions">
+      <a href="/settings/export/encrypted" class="btn-secondary">Download encrypted vault</a>
+    </div>
+  </div>
+  <div class="export-group">
+    <h3>Plaintext JSON</h3>
+    <p class="entry-sub">Every entry decrypted and serialized to JSON, for migrating to another password manager.</p>
+    <div class="export-actions">
+      <a href="/settings/export/json" class="btn-secondary">Download JSON export</a>
+    </div>
+    <p class="export-warning">⚠ This file is NOT encrypted. Store it briefly and delete it once you've imported it elsewhere.</p>
+  </div>
+</div>
+
+<div class="card danger-zone">
+  <div class="card-icon-header">
+    <span class="icon-badge icon-badge-danger">⚠</span>
+    <h2>Change Master Password</h2>
+  </div>
   <form method="post" action="/settings/rekey">
     <label for="current_password">Current master password</label>
     <input type="password" id="current_password" name="current_password" required>
@@ -20,5 +82,16 @@
     password before this form redirects you to re-authenticate — you'll
     need to sign in again on the next page.
   </p>
+</div>
+
+<div class="card danger-zone">
+  <div class="card-icon-header">
+    <span class="icon-badge icon-badge-danger">🗑</span>
+    <h2>Delete All Data</h2>
+  </div>
+  <p class="entry-sub">Permanently removes every entry and TOTP secret from this vault. This cannot be undone.</p>
+  <form method="post" action="/settings/delete-all" data-confirm="Delete ALL entries and TOTP secrets from this vault? This cannot be undone.">
+    <button type="submit" class="btn-danger">Delete all vault data</button>
+  </form>
 </div>
 {{end}}

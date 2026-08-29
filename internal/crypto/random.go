@@ -38,6 +38,26 @@ func RandomSalt() ([]byte, error) {
 	return RandomBytes(SaltLen)
 }
 
+// AlphabetSize returns the number of distinct characters the requested
+// classes draw from — the base for a generated password's entropy
+// (length * log2(AlphabetSize)).
+func AlphabetSize(opts PasswordOptions) int {
+	var n int
+	if opts.Lower {
+		n += len(charsLower)
+	}
+	if opts.Upper {
+		n += len(charsUpper)
+	}
+	if opts.Digits {
+		n += len(charsDigits)
+	}
+	if opts.Symbols {
+		n += len(charsSymbols)
+	}
+	return n
+}
+
 // GeneratePassword produces a random password drawn uniformly from the
 // requested character classes using crypto/rand for every character choice
 // (rejection sampling avoids modulo bias).

@@ -1,9 +1,31 @@
 {{define "content"}}
 <h1>Secrets Scanner</h1>
+
+<div class="tab-toggle">
+  <a href="#" data-scan-mode="file" class="{{if ne .Mode "git"}}active{{end}}">📁 File scan</a>
+  <a href="#" data-scan-mode="git" class="{{if eq .Mode "git"}}active{{end}}">🌱 Git history</a>
+</div>
+
 <div class="card">
   <form method="post" action="/scanner">
-    <label for="path">Directory path</label>
+    <input type="hidden" name="mode" id="scan-mode-input" value="{{.Mode}}">
+
+    <label for="path" id="scan-path-label">{{if eq .Mode "git"}}Git repository path{{else}}Directory path{{end}}</label>
     <input type="text" id="path" name="path" value="{{.Path}}" placeholder="/path/to/project" required>
+
+    <div class="slider-row">
+      <div class="slider-label-row">
+        <label for="min_entropy" style="margin:0;">Minimum entropy threshold</label>
+        <span class="slider-value" id="entropy-value">{{printf "%.1f" .MinEntropy}}</span>
+      </div>
+      <input type="range" id="min_entropy" name="min_entropy" min="2.0" max="5.0" step="0.1" value="{{.MinEntropy}}">
+    </div>
+
+    <div id="git-depth-row" style="{{if ne .Mode "git"}}display:none;{{end}}">
+      <label for="git_depth">Commits to scan</label>
+      <input type="number" id="git_depth" name="git_depth" min="1" max="1000" value="{{.GitDepth}}">
+    </div>
+
     <div style="margin-top: 1rem;">
       <button type="submit">Scan</button>
     </div>
@@ -11,27 +33,58 @@
 </div>
 
 {{if .Scanned}}
-<div class="card">
-  {{if not .Findings}}
-    <div class="empty">No secrets found.</div>
-  {{else}}
-    <table>
-      <tr><th>Severity</th><th>File</th><th>Line</th><th>Pattern</th><th>Match</th></tr>
-      {{range .Findings}}
-      <tr>
-        <td>
-          {{if eq .Severity "critical"}}<span class="badge badge-critical">critical</span>
-          {{else}}<span class="badge badge-warning">warning</span>{{end}}
-        </td>
-        <td class="mono">{{.File}}</td>
-        <td>{{.Line}}</td>
-        <td>{{.Pattern}}</td>
-        <td class="mono">{{.Match}}</td>
-      </tr>
-      {{end}}
-    </table>
-    <p class="entry-sub">{{len .Findings}} finding(s)</p>
+<div class="summary-bar">
+  <span><strong>{{.ElapsedMS}}ms</strong> elapsed</span>
+  <span><strong>{{.FilesScanned}}</strong> {{if eq .Mode "git"}}commits scanned{{else}}files touched{{end}}</span>
+  <span><strong>{{len .Results}}</strong> total findings</span>
+</div>
+
+{{if .Results}}
+<div class="mini-stats">
+  <div class="mini-stat mini-stat-danger">
+    <div class="mini-stat-num">{{.CriticalCount}}</div>
+    <div class="mini-stat-label">Critical</div>
+  </div>
+  <div class="mini-stat mini-stat-warning">
+    <div class="mini-stat-num">{{.WarningCount}}</div>
+    <div class="mini-stat-label">Warning</div>
+  </div>
+</div>
+{{end}}
+
+{{if not .Results}}
+<div class="card"><div class="empty-state">
+  <div class="empty-state-icon">✅</div>
+  <h3>No secrets found</h3>
+  <p>Nothing matched the {{len .Patterns}} known secret patterns at this entropy threshold.</p>
+</div></div>
+{{else}}
+{{range .Results}}
+<div class="result-card {{.Severity}}">
+  <div class="result-card-top">
+    {{if eq .Severity "critical"}}<span class="badge badge-critical">critical</span>{{else}}<span class="badge badge-warning">warning</span>{{end}}
+    {{if .IsGit}}<span class="badge badge-git">git</span>{{end}}
+    <span class="result-card-pattern">{{.Pattern}}</span>
+    <span class="result-card-loc">{{.Location}}</span>
+  </div>
+  <div class="result-card-match mono">{{.Match}}</div>
+  {{if .IsGit}}
+  <div class="result-card-meta">commit {{.CommitSHA}} by {{.Author}} on {{.Date}}{{if .DeletedLater}} · deleted in a later commit{{end}}</div>
   {{end}}
 </div>
 {{end}}
+{{end}}
+{{end}}
+
+<div class="card">
+  <h2>Supported patterns ({{len .Patterns}})</h2>
+  <div class="pattern-grid">
+    {{range .Patterns}}
+    <div class="pattern-card">
+      <div class="pattern-card-name">{{.Name}}</div>
+      <span class="pattern-card-sev {{.Severity}}">{{.Severity}}</span>
+    </div>
+    {{end}}
+  </div>
+</div>
 {{end}}

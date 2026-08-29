@@ -92,7 +92,7 @@ func TestStrengthScoring(t *testing.T) {
 	}
 	for _, c := range cases {
 		bits := entropyBits(c.password)
-		got := classify(bits)
+		got := Classify(bits)
 		if got != c.want {
 			t.Errorf("entropyBits(%q)=%.1f classified as %s, want %s", c.password, bits, got, c.want)
 		}

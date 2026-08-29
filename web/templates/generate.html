@@ -1,33 +1,93 @@
 {{define "content"}}
 <h1>Password Generator</h1>
+
 <div class="card">
   <form method="post" action="/generate">
-    <label for="length">Length</label>
-    <input type="number" id="length" name="length" min="4" max="128" value="{{.Length}}">
+    <div class="gen-columns">
+      <div>
+        <div class="slider-row">
+          <div class="slider-label-row">
+            <label for="length" style="margin:0;">Length</label>
+            <span class="slider-value" id="length-value">{{.Length}}</span>
+          </div>
+          <input type="range" id="length" name="length" min="4" max="128" value="{{.Length}}">
+        </div>
 
-    <label style="display:flex; align-items:center; gap:0.5rem; margin-top:0.75rem;">
-      <input type="checkbox" name="upper" {{if .Upper}}checked{{end}} style="width:auto;"> Uppercase
-    </label>
-    <label style="display:flex; align-items:center; gap:0.5rem;">
-      <input type="checkbox" name="lower" {{if .Lower}}checked{{end}} style="width:auto;"> Lowercase
-    </label>
-    <label style="display:flex; align-items:center; gap:0.5rem;">
-      <input type="checkbox" name="digits" {{if .Digits}}checked{{end}} style="width:auto;"> Digits
-    </label>
-    <label style="display:flex; align-items:center; gap:0.5rem;">
-      <input type="checkbox" name="symbols" {{if .Symbols}}checked{{end}} style="width:auto;"> Symbols
-    </label>
+        <div class="toggle-row">
+          <span class="toggle-row-label">Uppercase (A-Z)</span>
+          <label class="switch">
+            <input type="checkbox" name="upper" {{if .Upper}}checked{{end}}>
+            <span class="switch-track"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-row-label">Lowercase (a-z)</span>
+          <label class="switch">
+            <input type="checkbox" name="lower" {{if .Lower}}checked{{end}}>
+            <span class="switch-track"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-row-label">Digits (0-9)</span>
+          <label class="switch">
+            <input type="checkbox" name="digits" {{if .Digits}}checked{{end}}>
+            <span class="switch-track"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-row-label">Symbols (!@#$…)</span>
+          <label class="switch">
+            <input type="checkbox" name="symbols" {{if .Symbols}}checked{{end}}>
+            <span class="switch-track"></span>
+          </label>
+        </div>
 
-    <div style="margin-top: 1rem;">
-      <button type="submit">Generate</button>
+        <div style="margin-top: 1.25rem;">
+          <button type="submit">Generate</button>
+        </div>
+      </div>
+
+      <div>
+        {{if .Generated}}
+        <div class="gen-output-box"><span class="code mono">{{.Generated}}</span></div>
+        <div class="actions-row" style="margin-top:0;">
+          <button type="button" class="btn-secondary" data-copy="{{.Generated}}">Copy</button>
+          <span class="strength-badge strength-{{.StrengthClass}}">{{.Strength}} · {{printf "%.0f" .Bits}} bits</span>
+        </div>
+        <div style="margin-top: 1rem;">
+          <div class="gen-stat-row"><span>Uppercase</span><span>{{.UpperCount}}</span></div>
+          <div class="gen-stat-row"><span>Lowercase</span><span>{{.LowerCount}}</span></div>
+          <div class="gen-stat-row"><span>Digits</span><span>{{.DigitCount}}</span></div>
+          <div class="gen-stat-row"><span>Symbols</span><span>{{.SymbolCount}}</span></div>
+          <div class="gen-stat-row"><span>Crack time (online, 10/s)</span><span>{{.CrackTimeOnline}}</span></div>
+          <div class="gen-stat-row"><span>Crack time (offline, 10B/s)</span><span>{{.CrackTimeOffline}}</span></div>
+        </div>
+        {{else}}
+        <div class="empty-state">
+          <div class="empty-state-icon">🎲</div>
+          <p>Your generated password and its strength breakdown will appear here.</p>
+        </div>
+        {{end}}
+      </div>
     </div>
   </form>
+</div>
 
-  {{if .Generated}}
-  <div style="margin-top: 1.5rem; display:flex; align-items:center; gap:0.75rem;">
-    <span class="code mono">{{.Generated}}</span>
-    <button type="button" class="btn-secondary" data-copy="{{.Generated}}">Copy</button>
+<div class="tip-grid">
+  <div class="tip-card">
+    <div class="tip-card-icon">🎯</div>
+    <strong>Longer beats complex.</strong>
+    <p style="margin:0.4rem 0 0; color: var(--text-dim);">A 20-character password beats a 10-character one with symbols, bit for bit.</p>
   </div>
-  {{end}}
+  <div class="tip-card">
+    <div class="tip-card-icon">♻</div>
+    <strong>Never reuse passwords.</strong>
+    <p style="margin:0.4rem 0 0; color: var(--text-dim);">One breach shouldn't unlock every account — check Password Health for reuse.</p>
+  </div>
+  <div class="tip-card">
+    <div class="tip-card-icon">🔐</div>
+    <strong>Generated locally.</strong>
+    <p style="margin:0.4rem 0 0; color: var(--text-dim);">Every password here is generated with Go's crypto/rand — nothing leaves your machine.</p>
+  </div>
 </div>
 {{end}}

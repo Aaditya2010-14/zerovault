@@ -1,17 +1,23 @@
 package web
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"time"
 
 	vcrypto "zerovault/internal/crypto"
 	"zerovault/internal/fileenc"
+	"zerovault/internal/gitscan"
 	"zerovault/internal/health"
+	"zerovault/internal/qrcode"
 	"zerovault/internal/scanner"
 	"zerovault/internal/totp"
 	"zerovault/internal/vault"
@@ -111,15 +117,70 @@ func (s *Server) saveSession(sess *session) error {
 
 // --- Dashboard / entries ---
 
+// strengthClass maps a health.Strength to the weak/fair/strong CSS tier
+// used by the strength badges and colored left borders across the
+// dashboard, entry detail, and generator pages.
+func strengthClass(s health.Strength) string {
+	switch s {
+	case health.Weak:
+		return "weak"
+	case health.Fair:
+		return "fair"
+	default:
+		return "strong"
+	}
+}
+
+// relativeDays renders a duration as a short human-friendly age string.
+func relativeDays(d time.Duration) string {
+	days := int(d.Hours() / 24)
+	switch {
+	case days <= 0:
+		return "today"
+	case days == 1:
+		return "1 day ago"
+	default:
+		return fmt.Sprintf("%d days ago", days)
+	}
+}
+
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFromContext(r)
+	report := health.Analyze(sess.vault, time.Now())
+
+	classes := make(map[string]string, len(report.Entries))
+	for _, e := range report.Entries {
+		classes[e.Name] = strengthClass(e.Strength)
+	}
+
 	s.render(w, "dashboard", struct {
 		baseData
-		Entries []*vault.Entry
+		Entries       []*vault.Entry
+		StrengthClass map[string]string
+		TOTPCount     int
+		HealthScore   int
+		HealthClass   string
 	}{
-		baseData: baseData{Title: "Vault", Authenticated: true},
-		Entries:  sess.vault.List(),
+		baseData:      baseData{Title: "Vault", Authenticated: true},
+		Entries:       sess.vault.List(),
+		StrengthClass: classes,
+		TOTPCount:     len(sess.vault.ListTOTP()),
+		HealthScore:   report.Score,
+		HealthClass:   healthScoreClass(report.Score),
 	})
+}
+
+// healthScoreClass buckets a 0-100 health score into the same
+// good/warning/critical tiers health.html has always used.
+func healthScoreClass(score int) string {
+	switch {
+	case score < 50:
+		return "critical"
+	case score < 80:
+		return "warning"
+	default:
+		return "good"
+	}
 }
 
 func (s *Server) handleEntryView(w http.ResponseWriter, r *http.Request) {
@@ -132,17 +193,145 @@ func (s *Server) handleEntryView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	now := time.Now()
+	report := health.Analyze(sess.vault, now)
+	var eh health.EntryHealth
+	for _, e := range report.Entries {
+		if e.Name == name {
+			eh = e
+			break
+		}
+	}
+
+	age := now.Sub(entry.UpdatedAt)
 	s.render(w, "view", struct {
 		baseData
-		Entry *vault.Entry
+		Entry         *vault.Entry
+		Bits          float64
+		Strength      health.Strength
+		StrengthClass string
+		Missing       []string
+		CreatedRel    string
+		UpdatedRel    string
+		StaleDays     int
+		Stale         bool
 	}{
-		baseData: baseData{Title: name, Authenticated: true},
-		Entry:    entry,
+		baseData:      baseData{Title: name, Authenticated: true},
+		Entry:         entry,
+		Bits:          eh.Bits,
+		Strength:      eh.Strength,
+		StrengthClass: strengthClass(eh.Strength),
+		Missing:       missingCharClasses(entry.Password),
+		CreatedRel:    relativeDays(now.Sub(entry.CreatedAt)),
+		UpdatedRel:    relativeDays(age),
+		StaleDays:     int(age.Hours() / 24),
+		Stale:         age > 90*24*time.Hour,
 	})
+}
+
+// missingCharClasses lists the character classes absent from password, for
+// display as concrete "what to add" hints next to the strength meter.
+func missingCharClasses(password string) []string {
+	var hasUpper, hasLower, hasDigit, hasSymbol bool
+	for _, r := range password {
+		switch {
+		case r >= 'A' && r <= 'Z':
+			hasUpper = true
+		case r >= 'a' && r <= 'z':
+			hasLower = true
+		case r >= '0' && r <= '9':
+			hasDigit = true
+		default:
+			hasSymbol = true
+		}
+	}
+	var missing []string
+	if !hasUpper {
+		missing = append(missing, "no uppercase letters")
+	}
+	if !hasLower {
+		missing = append(missing, "no lowercase letters")
+	}
+	if !hasDigit {
+		missing = append(missing, "no digits")
+	}
+	if !hasSymbol {
+		missing = append(missing, "no symbols")
+	}
+	return missing
 }
 
 func (s *Server) handleAddForm(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "add", baseData{Title: "Add Entry", Authenticated: true})
+}
+
+func (s *Server) handleEntryEditForm(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFromContext(r)
+	name := r.PathValue("name")
+
+	entry, err := sess.vault.Get(name)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	s.render(w, "edit", struct {
+		baseData
+		Entry *vault.Entry
+	}{
+		baseData: baseData{Title: "Edit " + name, Authenticated: true},
+		Entry:    entry,
+	})
+}
+
+func (s *Server) handleEntryEditSubmit(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFromContext(r)
+	name := r.PathValue("name")
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+	url := r.FormValue("url")
+	notes := r.FormValue("notes")
+
+	// Update() leaves any blank field unchanged, so only the fields
+	// actually supplied need validating against Add's same limits.
+	for _, f := range []struct {
+		name, value string
+		max         int
+	}{
+		{"password", password, maxPasswordLen},
+		{"username", username, maxUsernameLen},
+		{"url", url, maxURLLen},
+		{"notes", notes, maxNotesLen},
+	} {
+		if f.value == "" {
+			continue
+		}
+		if err := validateFieldLen(f.name, f.value, f.max); err != nil {
+			entry, _ := sess.vault.Get(name)
+			s.render(w, "edit", struct {
+				baseData
+				Entry *vault.Entry
+			}{baseData{Title: "Edit " + name, Authenticated: true, Error: err.Error()}, entry})
+			return
+		}
+	}
+
+	if _, err := sess.vault.Update(name, username, password, url, notes); err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := s.saveSession(sess); err != nil {
+		s.logger.Error("failed to save vault after edit", "error", err)
+		http.Error(w, "an error occurred", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/entry/"+name, http.StatusSeeOther)
 }
 
 func (s *Server) handleAddSubmit(w http.ResponseWriter, r *http.Request) {
@@ -236,6 +425,13 @@ type generateData struct {
 	Length                        int
 	Upper, Lower, Digits, Symbols bool
 	Generated                     string
+	Bits                          float64
+	Strength                      health.Strength
+	StrengthClass                 string
+	UpperCount, LowerCount        int
+	DigitCount, SymbolCount       int
+	CrackTimeOnline               string // 10 guesses/sec — a rate-limited login form
+	CrackTimeOffline              string // 10B guesses/sec — an offline GPU attack on a stolen hash
 }
 
 func (s *Server) handleGenerateSubmit(w http.ResponseWriter, r *http.Request) {
@@ -266,7 +462,59 @@ func (s *Server) handleGenerateSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data.Generated = pw
+	if size := vcrypto.AlphabetSize(vcrypto.PasswordOptions{
+		Upper: data.Upper, Lower: data.Lower, Digits: data.Digits, Symbols: data.Symbols,
+	}); size > 0 {
+		data.Bits = float64(length) * math.Log2(float64(size))
+	}
+	data.Strength = health.Classify(data.Bits)
+	data.StrengthClass = strengthClass(data.Strength)
+	for _, r := range pw {
+		switch {
+		case r >= 'A' && r <= 'Z':
+			data.UpperCount++
+		case r >= 'a' && r <= 'z':
+			data.LowerCount++
+		case r >= '0' && r <= '9':
+			data.DigitCount++
+		default:
+			data.SymbolCount++
+		}
+	}
+	combinations := math.Pow(2, data.Bits)
+	data.CrackTimeOnline = crackTimeEstimate(combinations, 10)
+	data.CrackTimeOffline = crackTimeEstimate(combinations, 10e9)
 	s.render(w, "generate", data)
+}
+
+// crackTimeEstimate renders an average-case (half the keyspace) brute-force
+// time at the given guesses/sec rate as a human-scale string.
+func crackTimeEstimate(combinations, guessesPerSecond float64) string {
+	seconds := combinations / 2 / guessesPerSecond
+	const (
+		minute = 60.0
+		hour   = 60 * minute
+		day    = 24 * hour
+		year   = 365.25 * day
+	)
+	switch {
+	case seconds < 1:
+		return "instantly"
+	case seconds < minute:
+		return fmt.Sprintf("~%.0f seconds", seconds)
+	case seconds < hour:
+		return fmt.Sprintf("~%.0f minutes", seconds/minute)
+	case seconds < day:
+		return fmt.Sprintf("~%.0f hours", seconds/hour)
+	case seconds < year:
+		return fmt.Sprintf("~%.0f days", seconds/day)
+	case seconds < 1e6*year:
+		return fmt.Sprintf("~%.0f years", seconds/year)
+	case seconds < 1e12*year:
+		return fmt.Sprintf("~%.1f million years", seconds/year/1e6)
+	default:
+		return fmt.Sprintf("~%.1f billion years", seconds/year/1e9)
+	}
 }
 
 // --- TOTP ---
@@ -351,17 +599,85 @@ func (s *Server) handleTOTPDelete(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/totp", http.StatusSeeOther)
 }
 
+// handleTOTPQR renders an entry's enrollment QR code as inline SVG — the
+// same otpauth:// URI and zero-dependency encoder the `zerovault totp qr`
+// CLI command uses, just served instead of written to a file.
+func (s *Server) handleTOTPQR(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFromContext(r)
+	name := r.PathValue("name")
+
+	entry, err := sess.vault.GetTOTP(name)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	uri := otpauthURI(entry.Name, entry.Secret)
+	m, err := qrcode.Encode([]byte(uri))
+	if err != nil {
+		s.logger.Error("failed to generate TOTP QR code", "error", err)
+		http.Error(w, "failed to generate QR code", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "no-store")
+	fmt.Fprint(w, qrcode.ToSVG(m))
+}
+
+// otpauthURI builds the standard otpauth:// URI a phone authenticator app's
+// QR scanner expects (Key URI Format, as used by Google Authenticator etc).
+func otpauthURI(name, secret string) string {
+	label := "ZeroVault:" + name
+	q := url.Values{}
+	q.Set("secret", secret)
+	q.Set("issuer", "ZeroVault")
+	return "otpauth://totp/" + url.PathEscape(label) + "?" + q.Encode()
+}
+
 // --- Scanner ---
 
-func (s *Server) handleScannerForm(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "scanner", scannerData{baseData: baseData{Title: "Secrets Scanner", Authenticated: true}})
+// scanResult normalizes scanner.Finding and gitscan.Finding into one shape
+// so the results template doesn't need two separate render paths.
+type scanResult struct {
+	Severity     scanner.Severity
+	Location     string // "config.py:3" for file mode, commit-relative path for git mode
+	Pattern      string
+	Match        string
+	IsGit        bool
+	CommitSHA    string
+	Author       string
+	Date         string
+	DeletedLater bool
 }
 
 type scannerData struct {
 	baseData
-	Path     string
-	Scanned  bool
-	Findings []scanner.Finding
+	Mode          string // "file" or "git"
+	Path          string
+	MinEntropy    float64
+	GitDepth      int
+	Scanned       bool
+	Results       []scanResult
+	CriticalCount int
+	WarningCount  int
+	ElapsedMS     int64
+	FilesScanned  int // file mode: files touched; git mode: commits scanned
+	Patterns      []scanner.Pattern
+}
+
+func newScannerData(mode string) scannerData {
+	return scannerData{
+		baseData:   baseData{Title: "Secrets Scanner", Authenticated: true},
+		Mode:       mode,
+		MinEntropy: scanner.MinEntropy,
+		GitDepth:   50,
+		Patterns:   scanner.Patterns,
+	}
+}
+
+func (s *Server) handleScannerForm(w http.ResponseWriter, r *http.Request) {
+	s.render(w, "scanner", newScannerData("file"))
 }
 
 func (s *Server) handleScannerSubmit(w http.ResponseWriter, r *http.Request) {
@@ -370,12 +686,25 @@ func (s *Server) handleScannerSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := r.FormValue("path")
-
-	data := scannerData{
-		baseData: baseData{Title: "Secrets Scanner", Authenticated: true},
-		Path:     path,
-		Scanned:  true,
+	mode := r.FormValue("mode")
+	if mode != "git" {
+		mode = "file"
 	}
+
+	minEntropy, err := strconv.ParseFloat(r.FormValue("min_entropy"), 64)
+	if err != nil || minEntropy < 2.0 || minEntropy > 5.0 {
+		minEntropy = scanner.MinEntropy
+	}
+	gitDepth, err := strconv.Atoi(r.FormValue("git_depth"))
+	if err != nil || gitDepth <= 0 {
+		gitDepth = 50
+	}
+
+	data := newScannerData(mode)
+	data.Path = path
+	data.MinEntropy = minEntropy
+	data.GitDepth = gitDepth
+	data.Scanned = true
 
 	if err := validateScanPath(path); err != nil {
 		data.Error = err.Error()
@@ -384,15 +713,59 @@ func (s *Server) handleScannerSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	findings, err := scanner.ScanDir(path, scanner.Options{})
-	if err != nil {
-		data.Error = "an error occurred while scanning"
-		data.Scanned = false
-		s.logger.Error("scan failed", "path", path, "error", err)
-		s.render(w, "scanner", data)
-		return
+	start := time.Now()
+	if mode == "git" {
+		report, err := gitscan.ScanRepo(path, gitDepth, minEntropy)
+		if err != nil {
+			data.Error = err.Error()
+			data.Scanned = false
+			s.render(w, "scanner", data)
+			return
+		}
+		data.FilesScanned = report.CommitsScanned
+		for _, f := range report.Findings {
+			data.Results = append(data.Results, scanResult{
+				Severity:     f.Severity,
+				Location:     f.Path,
+				Pattern:      f.Pattern,
+				Match:        f.Match,
+				IsGit:        true,
+				CommitSHA:    f.CommitSHA[:min(8, len(f.CommitSHA))],
+				Author:       f.Author,
+				Date:         f.Date.Format("2006-01-02"),
+				DeletedLater: f.DeletedLater,
+			})
+		}
+	} else {
+		findings, err := scanner.ScanDir(path, scanner.Options{MinEntropy: minEntropy})
+		if err != nil {
+			data.Error = "an error occurred while scanning"
+			data.Scanned = false
+			s.logger.Error("scan failed", "path", path, "error", err)
+			s.render(w, "scanner", data)
+			return
+		}
+		seenFiles := map[string]bool{}
+		for _, f := range findings {
+			seenFiles[f.File] = true
+			data.Results = append(data.Results, scanResult{
+				Severity: f.Severity,
+				Location: fmt.Sprintf("%s:%d", f.File, f.Line),
+				Pattern:  f.Pattern,
+				Match:    f.Match,
+			})
+		}
+		data.FilesScanned = len(seenFiles)
 	}
-	data.Findings = findings
+	data.ElapsedMS = time.Since(start).Milliseconds()
+
+	for _, res := range data.Results {
+		if res.Severity == scanner.SeverityCritical {
+			data.CriticalCount++
+		} else {
+			data.WarningCount++
+		}
+	}
 	s.render(w, "scanner", data)
 }
 
@@ -449,8 +822,43 @@ func (s *Server) handleAbout(w http.ResponseWriter, r *http.Request) {
 
 // --- Settings / master password rotation ---
 
+type settingsData struct {
+	baseData
+	VaultPath    string
+	VaultSize    int64
+	EntryCount   int
+	TOTPCount    int
+	NotesCount   int
+	LastModified string
+	GoVersion    string
+}
+
+// buildSettingsData gathers the read-only vault-info stats shown on the
+// settings page — file stat plus counts already available from the
+// in-memory vault, nothing new persisted or computed at rest.
+func (s *Server) buildSettingsData(sess *session, title string) settingsData {
+	data := settingsData{
+		baseData:  baseData{Title: title, Authenticated: true},
+		VaultPath: sess.vaultPath,
+		GoVersion: runtime.Version(),
+	}
+	if info, err := os.Stat(sess.vaultPath); err == nil {
+		data.VaultSize = info.Size()
+		data.LastModified = info.ModTime().Format("2006-01-02 15:04 MST")
+	}
+	for _, e := range sess.vault.List() {
+		data.EntryCount++
+		if e.Notes != "" {
+			data.NotesCount++
+		}
+	}
+	data.TOTPCount = len(sess.vault.ListTOTP())
+	return data
+}
+
 func (s *Server) handleSettingsForm(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "settings", baseData{Title: "Settings", Authenticated: true})
+	sess := sessionFromContext(r)
+	s.render(w, "settings", s.buildSettingsData(sess, "Settings"))
 }
 
 func (s *Server) handleSettingsRekey(w http.ResponseWriter, r *http.Request) {
@@ -464,18 +872,24 @@ func (s *Server) handleSettingsRekey(w http.ResponseWriter, r *http.Request) {
 	newPw := r.FormValue("new_password")
 	confirm := r.FormValue("confirm_password")
 
+	fail := func(msg string) {
+		data := s.buildSettingsData(sess, "Settings")
+		data.Error = msg
+		s.render(w, "settings", data)
+	}
+
 	if current != sess.masterPw {
-		s.render(w, "settings", baseData{Title: "Settings", Authenticated: true, Error: "current password is incorrect"})
+		fail("current password is incorrect")
 		return
 	}
 	if newPw == "" || newPw != confirm {
-		s.render(w, "settings", baseData{Title: "Settings", Authenticated: true, Error: "new passwords do not match or are empty"})
+		fail("new passwords do not match or are empty")
 		return
 	}
 
 	if _, err := vault.Rekey(sess.vaultPath, current, newPw); err != nil {
 		s.logger.Error("rekey failed", "error", err)
-		s.render(w, "settings", baseData{Title: "Settings", Authenticated: true, Error: "failed to change master password"})
+		fail("failed to change master password")
 		return
 	}
 
@@ -488,6 +902,47 @@ func (s *Server) handleSettingsRekey(w http.ResponseWriter, r *http.Request) {
 	}
 	clearSessionCookie(w)
 	http.Redirect(w, r, "/unlock", http.StatusSeeOther)
+}
+
+// handleSettingsExportEncrypted streams the vault file exactly as it sits
+// on disk — still AES-256-GCM encrypted under the current master
+// password, so the download is only useful to someone who also has it.
+func (s *Server) handleSettingsExportEncrypted(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFromContext(r)
+	name := filepath.Base(sess.vaultPath)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name))
+	http.ServeFile(w, r, sess.vaultPath)
+}
+
+// handleSettingsExportJSON serializes the decrypted vault straight to
+// JSON — an intentionally plaintext export, clearly labeled as such in
+// the UI, for migrating to another password manager.
+func (s *Server) handleSettingsExportJSON(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFromContext(r)
+	w.Header().Set("Content-Disposition", `attachment; filename="zerovault-export.json"`)
+	w.Header().Set("Content-Type", "application/json")
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(sess.vault); err != nil {
+		s.logger.Error("json export failed", "error", err)
+	}
+}
+
+// handleSettingsDeleteAll wipes every entry and TOTP secret from the vault
+// and saves the (now empty) result. The confirmation dialog lives
+// client-side (data-confirm), same pattern as entry deletion.
+func (s *Server) handleSettingsDeleteAll(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFromContext(r)
+	sess.vault.Entries = nil
+	sess.vault.TOTPEntries = nil
+	if err := s.saveSession(sess); err != nil {
+		s.logger.Error("failed to save vault after delete-all", "error", err)
+		http.Error(w, "an error occurred", http.StatusInternalServerError)
+		return
+	}
+	data := s.buildSettingsData(sess, "Settings")
+	data.Success = "All vault data has been deleted."
+	s.render(w, "settings", data)
 }
 
 // --- File encryption ---

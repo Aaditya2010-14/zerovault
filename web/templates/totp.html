@@ -1,10 +1,28 @@
 {{define "content"}}
 <h1>TOTP Codes</h1>
-<div style="margin-bottom: 1rem;">
-  <a href="#" class="btn" onclick="document.getElementById('add-totp').style.display='block';return false;">+ Add TOTP secret</a>
+
+{{if .Entries}}
+<div class="mini-stats">
+  <div class="mini-stat">
+    <div class="mini-stat-num">{{len .Entries}}</div>
+    <div class="mini-stat-label">Active Codes</div>
+  </div>
+  <div class="mini-stat mini-stat-success">
+    <div class="mini-stat-num">RFC 6238</div>
+    <div class="mini-stat-label">Standard</div>
+  </div>
 </div>
+{{end}}
+
+<a href="#" class="add-entry-card" data-toggle-target="add-totp">
+  <span class="plus-icon"></span> Add TOTP secret
+</a>
 
 <div class="card" id="add-totp" style="display:none;">
+  <div class="card-icon-header">
+    <span class="icon-badge icon-badge-accent">🔑</span>
+    <h2>New TOTP secret</h2>
+  </div>
   <form method="post" action="/totp">
     <label for="name">Name</label>
     <input type="text" id="name" name="name" required>
@@ -16,25 +34,37 @@
   </form>
 </div>
 
+{{if not .Entries}}
 <div class="card">
-  {{if not .Entries}}
-    <div class="empty">No TOTP entries yet.</div>
-  {{else}}
-    <table>
-      <tr><th>Name</th><th>Code</th><th>Refreshes</th><th></th></tr>
-      {{range .Entries}}
-      <tr>
-        <td>{{.Name}}</td>
-        <td class="code">{{.Code}}</td>
-        <td class="countdown" data-remaining="{{$.Remaining}}">{{$.Remaining}}s</td>
-        <td>
-          <form method="post" action="/totp/delete/{{.Name}}" data-confirm="Delete TOTP entry {{.Name}}?" style="display:inline;">
-            <button type="submit" class="btn-secondary">Delete</button>
-          </form>
-        </td>
-      </tr>
-      {{end}}
-    </table>
-  {{end}}
+  <div class="empty-state">
+    <div class="empty-state-icon">🔑</div>
+    <h3>No TOTP codes yet</h3>
+    <p>Add a secret from a service's two-factor setup screen to generate RFC 6238 codes right here.</p>
+  </div>
 </div>
+{{else}}
+{{range .Entries}}
+<div class="card totp-card">
+  <div class="totp-card-name">{{.Name}}</div>
+  <div class="totp-card-code mono" data-totp-code>{{.Code}}</div>
+  <svg class="totp-ring" viewBox="0 0 44 44" data-totp-ring data-remaining="{{$.Remaining}}" data-period="30">
+    <circle cx="22" cy="22" r="18" fill="none" stroke="var(--border)" stroke-width="4"></circle>
+    <circle cx="22" cy="22" r="18" fill="none" stroke="var(--success)" stroke-width="4"
+      stroke-dasharray="113.1" stroke-linecap="round" transform="rotate(-90 22 22)" data-totp-ring-fill></circle>
+    <text x="22" y="26" text-anchor="middle" data-totp-ring-text>{{$.Remaining}}</text>
+  </svg>
+  <div class="totp-card-actions">
+    <button type="button" class="icon-btn" data-copy="{{.Code}}" title="Copy code">📋</button>
+    <button type="button" class="icon-btn" data-toggle-target="qr-{{.Name}}" title="Show QR code">▦</button>
+    <form method="post" action="/totp/delete/{{.Name}}" data-confirm="Delete TOTP entry {{.Name}}?" style="display:inline;">
+      <button type="submit" class="icon-btn" title="Delete">🗑</button>
+    </form>
+  </div>
+  <div class="totp-qr-panel" id="qr-{{.Name}}" style="width:100%;">
+    <img src="/totp/qr/{{.Name}}" alt="QR code for {{.Name}}" width="160" height="160">
+    <p>Scan with an authenticator app to re-enroll this secret.</p>
+  </div>
+</div>
+{{end}}
+{{end}}
 {{end}}

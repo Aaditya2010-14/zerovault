@@ -1,17 +1,49 @@
 {{define "content"}}
 <h1>Vault</h1>
-<div style="margin-bottom: 1rem;"><a href="/add" class="btn">+ Add entry</a></div>
+
+<div class="mini-stats">
+  <div class="mini-stat">
+    <div class="mini-stat-num">{{len .Entries}}</div>
+    <div class="mini-stat-label">Entries Stored</div>
+  </div>
+  <div class="mini-stat mini-stat-success">
+    <div class="mini-stat-num">{{.TOTPCount}}</div>
+    <div class="mini-stat-label">TOTP Codes</div>
+  </div>
+  <div class="mini-stat mini-stat-{{.HealthClass}}">
+    <div class="mini-stat-num">{{.HealthScore}}%</div>
+    <div class="mini-stat-label">Health Score</div>
+  </div>
+  <div class="mini-stat">
+    <div class="mini-stat-num">AES-256-GCM</div>
+    <div class="mini-stat-label">Encryption</div>
+  </div>
+</div>
+
+<a href="/add" class="add-entry-card">
+  <span class="plus-icon"></span> Add a new entry
+</a>
+
 {{if not .Entries}}
-  <div class="card"><div class="empty">No entries yet. <a href="/add">Add your first one</a>.</div></div>
+  <div class="card">
+    <div class="empty-state">
+      <div class="empty-state-icon">🔐</div>
+      <h3>Your vault is empty</h3>
+      <p>Add your first password entry to get started — everything is encrypted at rest with AES-256-GCM.</p>
+      <a href="/add" class="btn">+ Add your first entry</a>
+    </div>
+  </div>
 {{else}}
-  <div class="search-bar">
+  <div class="filter-bar">
     <input type="search" id="entry-search" placeholder="Search entries…" autocomplete="off">
   </div>
   <div class="entry-grid" id="entry-grid">
     {{range .Entries}}
-    <a href="/entry/{{.Name}}" class="entry-card" data-name="{{.Name}}">
+    <a href="/entry/{{.Name}}" class="entry-card strength-{{index $.StrengthClass .Name}}" data-name="{{.Name}}">
+      <div class="entry-card-icon">🔐</div>
       <div class="entry-name">{{.Name}}</div>
       {{if .Username}}<div class="entry-sub">{{.Username}}</div>{{end}}
+      {{if .URL}}<span class="entry-url">{{.URL}}</span>{{end}}
     </a>
     {{end}}
   </div>

@@ -1,46 +1,106 @@
 {{define "content"}}
 <h1>Password Health</h1>
 
-<div class="card health-score health-{{.ScoreClass}}">
-  <div class="health-score-label">VAULT HEALTH SCORE</div>
-  <div class="health-score-number">{{.Report.Score}}%</div>
-  <div class="health-bar"><div class="health-bar-fill" style="width: {{.Report.Score}}%;"></div></div>
+<div class="card">
+  <div class="health-ring-wrap">
+    <div class="health-ring" style="background: conic-gradient(var(--{{if eq .ScoreClass "critical"}}danger{{else if eq .ScoreClass "warning"}}warning{{else}}success{{end}}) {{.Report.Score}}%, var(--border) 0);">
+      <span class="health-ring-sub">SCORE</span>
+      <span class="health-ring-number">{{.Report.Score}}</span>
+    </div>
+  </div>
+  <p style="text-align:center; color: var(--text-dim); margin-top: 0.5rem;">Vault Health Score</p>
 </div>
 
 {{if not .Report.Entries}}
-<div class="card"><div class="empty">Vault is empty — nothing to analyze.</div></div>
+<div class="card"><div class="empty-state">
+  <div class="empty-state-icon">🩺</div>
+  <h3>Nothing to analyze yet</h3>
+  <p>Add some entries to your vault and this page will grade their strength.</p>
+</div></div>
 {{else}}
+
+<div class="mini-stats">
+  <div class="mini-stat mini-stat-success">
+    <div class="mini-stat-num">{{len .Strong}}</div>
+    <div class="mini-stat-label">Strong+</div>
+  </div>
+  <div class="mini-stat mini-stat-danger">
+    <div class="mini-stat-num">{{len .Report.Critical}}</div>
+    <div class="mini-stat-label">Critical Issues</div>
+  </div>
+  <div class="mini-stat mini-stat-warning">
+    <div class="mini-stat-num">{{len .Report.Warning}}</div>
+    <div class="mini-stat-label">Warnings</div>
+  </div>
+  <div class="mini-stat">
+    <div class="mini-stat-num">{{.Report.ReusedGroups}}</div>
+    <div class="mini-stat-label">Reused Groups</div>
+  </div>
+  <div class="mini-stat">
+    <div class="mini-stat-num">{{printf "%.0f" .Report.AvgBits}}</div>
+    <div class="mini-stat-label">Avg. Bits</div>
+  </div>
+</div>
 
 {{if .Report.Critical}}
 <div class="card">
-  <h2 class="health-section-critical">CRITICAL ({{len .Report.Critical}})</h2>
+  <div class="card-icon-header">
+    <span class="icon-badge icon-badge-danger">⚠</span>
+    <h2 class="health-section-critical">CRITICAL ({{len .Report.Critical}})</h2>
+  </div>
   {{range .Report.Critical}}<div class="health-issue">⚠ {{.Message}}</div>{{end}}
 </div>
 {{end}}
 
 {{if .Report.Warning}}
 <div class="card">
-  <h2 class="health-section-warning">WARNING ({{len .Report.Warning}})</h2>
+  <div class="card-icon-header">
+    <span class="icon-badge icon-badge-warning">⚠</span>
+    <h2 class="health-section-warning">WARNING ({{len .Report.Warning}})</h2>
+  </div>
   {{range .Report.Warning}}<div class="health-issue">⚠ {{.Message}}</div>{{end}}
 </div>
 {{end}}
 
 {{if .Strong}}
 <div class="card">
-  <h2 class="health-section-strong">STRONG ({{len .Strong}})</h2>
+  <div class="card-icon-header">
+    <span class="icon-badge icon-badge-success">✓</span>
+    <h2 class="health-section-strong">STRONG ({{len .Strong}})</h2>
+  </div>
   {{range .Strong}}<div class="health-issue">✓ {{.Name}}: {{.Strength}} ({{printf "%.0f" .Bits}} bits)</div>{{end}}
 </div>
 {{end}}
 
+<div class="card recommend-card">
+  <span class="icon-badge icon-badge-accent">💡</span>
+  <div>
+    <strong>Recommendations</strong>
+    <p style="margin:0.4rem 0 0; color: var(--text-dim);">
+      {{if .Report.Critical}}Fix critical issues first — weak, common, or reused passwords are the highest-value targets for an attacker.
+      {{else if .Report.Warning}}No critical issues — tightening up the warnings below will push your score higher.
+      {{else}}Your vault is in great shape. Keep rotating passwords older than 90 days.{{end}}
+    </p>
+    <div class="actions-row">
+      <a href="/generate" class="btn-secondary">Generate a stronger password</a>
+      <a href="/scanner" class="btn-secondary">Scan for leaked secrets</a>
+    </div>
+  </div>
+</div>
+
 <div class="card">
   <h2>All entries</h2>
   <table>
-    <tr><th>Name</th><th>Strength</th><th>Bits</th></tr>
+    <tr><th>Name</th><th>Strength</th><th>Bits</th><th></th></tr>
     {{range .Report.Entries}}
     <tr>
       <td class="mono">{{.Name}}</td>
-      <td>{{.Strength}}</td>
+      <td>
+        <span class="strength-bar-mini"><span class="strength-bar-mini-fill" style="width: {{if gt .Bits 100.0}}100{{else}}{{printf "%.0f" .Bits}}{{end}}%; background: var(--{{if eq .Strength.String "Weak"}}danger{{else if eq .Strength.String "Fair"}}warning{{else}}success{{end}});"></span></span>
+        {{.Strength}}
+      </td>
       <td>{{printf "%.0f" .Bits}}</td>
+      <td><a href="/entry/{{.Name}}/edit" class="fix-btn btn-secondary">Fix</a></td>
     </tr>
     {{end}}
   </table>

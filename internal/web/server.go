@@ -50,6 +50,8 @@ func (s *Server) Handler() (http.Handler, error) {
 
 	mux.HandleFunc("GET /dashboard", s.requireSession(s.handleDashboard))
 	mux.HandleFunc("GET /entry/{name}", s.requireSession(s.handleEntryView))
+	mux.HandleFunc("GET /entry/{name}/edit", s.requireSession(s.handleEntryEditForm))
+	mux.HandleFunc("POST /entry/{name}/edit", s.requireSession(s.handleEntryEditSubmit))
 	mux.HandleFunc("GET /add", s.requireSession(s.handleAddForm))
 	mux.HandleFunc("POST /add", s.requireSession(s.handleAddSubmit))
 	mux.HandleFunc("POST /delete/{name}", s.requireSession(s.handleDelete))
@@ -60,6 +62,7 @@ func (s *Server) Handler() (http.Handler, error) {
 	mux.HandleFunc("GET /totp", s.requireSession(s.handleTOTPList))
 	mux.HandleFunc("POST /totp", s.requireSession(s.handleTOTPAdd))
 	mux.HandleFunc("POST /totp/delete/{name}", s.requireSession(s.handleTOTPDelete))
+	mux.HandleFunc("GET /totp/qr/{name}", s.requireSession(s.handleTOTPQR))
 
 	mux.HandleFunc("GET /scanner", s.requireSession(s.handleScannerForm))
 	mux.HandleFunc("POST /scanner", s.requireSession(s.handleScannerSubmit))
@@ -70,6 +73,9 @@ func (s *Server) Handler() (http.Handler, error) {
 
 	mux.HandleFunc("GET /settings", s.requireSession(s.handleSettingsForm))
 	mux.HandleFunc("POST /settings/rekey", s.requireSession(s.handleSettingsRekey))
+	mux.HandleFunc("GET /settings/export/encrypted", s.requireSession(s.handleSettingsExportEncrypted))
+	mux.HandleFunc("GET /settings/export/json", s.requireSession(s.handleSettingsExportJSON))
+	mux.HandleFunc("POST /settings/delete-all", s.requireSession(s.handleSettingsDeleteAll))
 
 	mux.HandleFunc("GET /file", s.requireSession(s.handleFileForm))
 	mux.HandleFunc("POST /file/encrypt", s.requireSession(s.handleFileEncrypt))

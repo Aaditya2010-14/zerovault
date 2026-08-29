@@ -1,27 +1,75 @@
 {{define "content"}}
-<h1>{{.Entry.Name}}</h1>
+<a href="/dashboard" class="back-arrow" data-bounce-nav aria-label="Back to vault">&larr;</a>
+
+<div class="strength-header">
+  <h1 style="margin:0;">{{.Entry.Name}}</h1>
+  <span class="strength-badge strength-{{.StrengthClass}}">{{.Strength}} · {{printf "%.0f" .Bits}} bits</span>
+</div>
+
 <div class="card">
   {{if .Entry.Username}}
-  <label>Username</label>
-  <div>{{.Entry.Username}}</div>
+  <div class="detail-row">
+    <div class="detail-row-label">Username</div>
+    <div class="detail-row-value">{{.Entry.Username}}</div>
+    <button type="button" class="icon-btn" data-copy="{{.Entry.Username}}" title="Copy username">📋</button>
+  </div>
   {{end}}
 
-  <label>Password</label>
-  <div class="mono" style="display:flex; align-items:center; gap:0.75rem;">
-    <span class="secret" data-secret="{{.Entry.Password}}">••••••••</span>
-    <button type="button" class="btn-secondary" data-toggle-secret>Show</button>
-    <button type="button" class="btn-secondary" data-copy="{{.Entry.Password}}">Copy</button>
+  <div class="detail-row">
+    <div class="detail-row-label">Password</div>
+    <div class="detail-row-value mono">
+      <span class="secret" data-secret="{{.Entry.Password}}">••••••••</span>
+    </div>
+    <button type="button" class="icon-btn" data-toggle-secret title="Show/hide">👁</button>
+    <button type="button" class="icon-btn" data-copy="{{.Entry.Password}}" title="Copy password">📋</button>
   </div>
 
   {{if .Entry.URL}}
-  <label>URL</label>
-  <div><a href="{{.Entry.URL}}" target="_blank" rel="noopener noreferrer" style="color: var(--accent);">{{.Entry.URL}}</a></div>
+  <div class="detail-row">
+    <div class="detail-row-label">URL</div>
+    <div class="detail-row-value"><a href="{{.Entry.URL}}" target="_blank" rel="noopener noreferrer" style="color: var(--accent);">{{.Entry.URL}}</a></div>
+  </div>
   {{end}}
 
   {{if .Entry.Notes}}
-  <label>Notes</label>
-  <div>{{.Entry.Notes}}</div>
+  <div class="detail-row">
+    <div class="detail-row-label">Notes</div>
+    <div class="detail-row-value">{{.Entry.Notes}}</div>
+  </div>
   {{end}}
+
+  <div class="detail-row">
+    <div class="detail-row-label">Created</div>
+    <div class="detail-row-value">{{.CreatedRel}}</div>
+  </div>
+  <div class="detail-row">
+    <div class="detail-row-label">Updated</div>
+    <div class="detail-row-value">{{.UpdatedRel}}</div>
+  </div>
+
+  <div class="strength-meter">
+    <div class="strength-meter-fill {{.StrengthClass}}" style="width: {{if gt .Bits 100.0}}100{{else}}{{printf "%.0f" .Bits}}{{end}}%;"></div>
+  </div>
+  {{if .Missing}}
+  <div class="missing-list">
+    {{range .Missing}}<span class="missing-pill">{{.}}</span>{{end}}
+  </div>
+  {{end}}
+</div>
+
+{{if .Stale}}
+<div class="card security-tip-card">
+  <span class="icon-badge icon-badge-warning">⏱</span>
+  <div>
+    <strong>This password hasn't been changed in {{.StaleDays}} days.</strong>
+    <div class="entry-sub">Consider rotating it, especially if it's reused anywhere else.</div>
+  </div>
+</div>
+{{end}}
+
+<div class="actions-row">
+  <a href="/entry/{{.Entry.Name}}/edit" class="btn-secondary">✎ Edit entry</a>
+  <a href="/generate" class="btn-secondary">⟳ Generate new password</a>
 </div>
 
 <form method="post" action="/delete/{{.Entry.Name}}" data-confirm="Delete {{.Entry.Name}}? This cannot be undone.">

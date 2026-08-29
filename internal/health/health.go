@@ -39,10 +39,10 @@ func (s Strength) String() string {
 	}
 }
 
-// classify maps entropy bits to a Strength band, per the thresholds in
+// Classify maps entropy bits to a Strength band, per the thresholds in
 // feature-expansion-instructions.md: <40 weak, 40-60 fair, 60-80 strong,
 // 80+ very strong.
-func classify(bits float64) Strength {
+func Classify(bits float64) Strength {
 	switch {
 	case bits < 40:
 		return Weak
@@ -71,12 +71,13 @@ type Issue struct {
 
 // Report is the full health analysis of a vault at one point in time.
 type Report struct {
-	Score      int // 0-100
-	Critical   []Issue
-	Warning    []Issue
-	Entries    []EntryHealth // every entry, for the strength breakdown
-	AvgBits    float64
-	OldestDays int
+	Score        int // 0-100
+	Critical     []Issue
+	Warning      []Issue
+	Entries      []EntryHealth // every entry, for the strength breakdown
+	AvgBits      float64
+	OldestDays   int
+	ReusedGroups int // number of distinct passwords reused across 2+ entries
 }
 
 const (
@@ -96,7 +97,7 @@ func Analyze(v *vault.Vault, now time.Time) Report {
 
 	for _, e := range entries {
 		bits := entropyBits(e.Password)
-		strength := classify(bits)
+		strength := Classify(bits)
 		report.Entries = append(report.Entries, EntryHealth{Name: e.Name, Bits: bits, Strength: strength})
 		report.AvgBits += bits
 
@@ -140,6 +141,7 @@ func Analyze(v *vault.Vault, now time.Time) Report {
 		}
 	}
 	sort.Slice(reusedNames, func(i, j int) bool { return reusedNames[i][0] < reusedNames[j][0] })
+	report.ReusedGroups = len(reusedNames)
 	for _, names := range reusedNames {
 		report.Critical = append(report.Critical, Issue{fmt.Sprintf("%s: same password reused", strings.Join(names, ", "))})
 	}

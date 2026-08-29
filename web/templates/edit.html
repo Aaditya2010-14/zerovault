@@ -1,0 +1,28 @@
+{{define "content"}}
+<a href="/entry/{{.Entry.Name}}" class="back-arrow" data-bounce-nav aria-label="Back to entry">&larr;</a>
+<h1>Edit {{.Entry.Name}}</h1>
+<div class="tip-banner">
+  <span class="tip-banner-icon">✎</span>
+  <span>Leave a field blank to keep its current value. Only fields you fill in are changed.</span>
+</div>
+<div class="card">
+  <form method="post" action="/entry/{{.Entry.Name}}/edit">
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" value="{{.Entry.Username}}">
+
+    <label for="password">Password</label>
+    <input type="text" id="password" name="password" class="mono" placeholder="leave blank to keep current password">
+
+    <label for="url">URL</label>
+    <input type="url" id="url" name="url" value="{{.Entry.URL}}">
+
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes" rows="3">{{.Entry.Notes}}</textarea>
+
+    <div style="margin-top: 1rem; display:flex; gap:0.5rem;">
+      <button type="submit">Save changes</button>
+      <a href="/entry/{{.Entry.Name}}" class="btn-secondary btn">Cancel</a>
+    </div>
+  </form>
+</div>
+{{end}}

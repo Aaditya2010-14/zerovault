@@ -1,14 +1,33 @@
 // Minimal vanilla JS — no framework, no build step.
 
-// TOTP countdown: each [data-remaining] element holds the server-computed
-// seconds-until-refresh at page load. Count it down client-side and reload
-// the page once it hits zero so displayed codes never go stale.
+// TOTP countdown rings: each [data-totp-ring] holds the server-computed
+// seconds-until-refresh and period at page load. Count down client-side,
+// animating the ring's stroke-dashoffset, and reload once any ring hits
+// zero so displayed codes never go stale.
 (function () {
-  var els = document.querySelectorAll("[data-remaining]");
-  if (els.length === 0) return;
+  var rings = document.querySelectorAll("[data-totp-ring]");
+  if (rings.length === 0) return;
 
-  var remaining = parseInt(els[0].getAttribute("data-remaining"), 10);
+  var period = parseInt(rings[0].getAttribute("data-period"), 10) || 30;
+  var remaining = parseInt(rings[0].getAttribute("data-remaining"), 10);
   if (isNaN(remaining)) return;
+
+  var circumference = 2 * Math.PI * 18;
+
+  function paint() {
+    rings.forEach(function (ring) {
+      var fill = ring.querySelector("[data-totp-ring-fill]");
+      var text = ring.querySelector("[data-totp-ring-text]");
+      var frac = Math.max(0, remaining / period);
+      if (fill) {
+        fill.setAttribute("stroke-dasharray", circumference.toFixed(1));
+        fill.setAttribute("stroke-dashoffset", (circumference * (1 - frac)).toFixed(1));
+        fill.style.stroke = remaining <= 5 ? "var(--danger)" : remaining <= 10 ? "var(--warning)" : "var(--success)";
+      }
+      if (text) text.textContent = remaining;
+    });
+  }
+  paint();
 
   var timer = setInterval(function () {
     remaining -= 1;
@@ -17,10 +36,100 @@
       window.location.reload();
       return;
     }
-    els.forEach(function (el) {
-      el.textContent = remaining + "s";
-    });
+    paint();
   }, 1000);
+})();
+
+// Generic show/hide toggle: [data-toggle-target="id"] shows/hides the
+// element with that id (used for the TOTP add-form and QR panels), CSP-safe
+// replacement for an inline onclick handler.
+document.addEventListener("click", function (e) {
+  var btn = e.target.closest("[data-toggle-target]");
+  if (!btn) return;
+  e.preventDefault();
+  var el = document.getElementById(btn.getAttribute("data-toggle-target"));
+  if (!el) return;
+  if (el.classList.contains("totp-qr-panel")) {
+    el.classList.toggle("open");
+  } else {
+    el.style.display = el.style.display === "none" || !el.style.display ? "block" : "none";
+  }
+});
+
+// Range sliders: mirror the live value next to the label.
+(function () {
+  var length = document.getElementById("length");
+  var lengthValue = document.getElementById("length-value");
+  if (length && lengthValue) {
+    length.addEventListener("input", function () {
+      lengthValue.textContent = length.value;
+    });
+  }
+  var entropy = document.getElementById("min_entropy");
+  var entropyValue = document.getElementById("entropy-value");
+  if (entropy && entropyValue) {
+    entropy.addEventListener("input", function () {
+      entropyValue.textContent = parseFloat(entropy.value).toFixed(1);
+    });
+  }
+})();
+
+// Scanner mode tabs: file vs. git, driving a hidden input plus which extra
+// fields are shown — no page reload needed to switch modes.
+(function () {
+  var tabs = document.querySelectorAll("[data-scan-mode]");
+  var modeInput = document.getElementById("scan-mode-input");
+  var gitRow = document.getElementById("git-depth-row");
+  var pathLabel = document.getElementById("scan-path-label");
+  if (tabs.length === 0 || !modeInput) return;
+
+  tabs.forEach(function (tab) {
+    tab.addEventListener("click", function (e) {
+      e.preventDefault();
+      var mode = tab.getAttribute("data-scan-mode");
+      modeInput.value = mode;
+      tabs.forEach(function (t) { t.classList.toggle("active", t === tab); });
+      if (gitRow) gitRow.style.display = mode === "git" ? "" : "none";
+      if (pathLabel) pathLabel.textContent = mode === "git" ? "Git repository path" : "Directory path";
+    });
+  });
+})();
+
+// Drag-and-drop file zones on the File Encryption page.
+(function () {
+  document.querySelectorAll("[data-drop-zone]").forEach(function (zone) {
+    var input = document.getElementById(zone.getAttribute("data-target"));
+    var filenameEl = zone.querySelector("[data-drop-zone-filename]");
+    if (!input) return;
+
+    zone.addEventListener("click", function () { input.click(); });
+
+    function showFile() {
+      if (input.files && input.files[0] && filenameEl) {
+        filenameEl.textContent = "📎 " + input.files[0].name;
+      }
+    }
+    input.addEventListener("change", showFile);
+
+    ["dragenter", "dragover"].forEach(function (evt) {
+      zone.addEventListener(evt, function (e) {
+        e.preventDefault();
+        zone.classList.add("drag-over");
+      });
+    });
+    ["dragleave", "drop"].forEach(function (evt) {
+      zone.addEventListener(evt, function (e) {
+        e.preventDefault();
+        zone.classList.remove("drag-over");
+      });
+    });
+    zone.addEventListener("drop", function (e) {
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        input.files = e.dataTransfer.files;
+        showFile();
+      }
+    });
+  });
 })();
 
 // Copy-to-clipboard buttons: [data-copy] holds the text to copy.
@@ -110,6 +219,18 @@ document.addEventListener("click", function (e) {
     });
   });
 })();
+
+// Back-to-vault arrow: play a physical button-press (depth) effect before
+// navigating so the click feels acknowledged.
+document.addEventListener("click", function (e) {
+  var el = e.target.closest("[data-bounce-nav]");
+  if (!el) return;
+  e.preventDefault();
+  el.classList.add("press");
+  setTimeout(function () {
+    window.location.href = el.getAttribute("href");
+  }, 250);
+});
 
 // Confirm destructive actions.
 document.addEventListener("submit", function (e) {

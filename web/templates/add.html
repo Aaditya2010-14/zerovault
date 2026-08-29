@@ -1,5 +1,9 @@
 {{define "content"}}
 <h1>Add Entry</h1>
+<div class="tip-banner">
+  <span class="tip-banner-icon">🔐</span>
+  <span>This entry is encrypted with AES-256-GCM before it ever touches disk — the plaintext exists only in memory while the vault is unlocked.</span>
+</div>
 <div class="card">
   <form method="post" action="/add">
     <label for="name">Name</label>
