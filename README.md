@@ -208,6 +208,18 @@ vault and a real, locally-running copy of the dashboard. See `attacks/` for
 the source; each attack performs the real cryptographic operation or real
 HTTP request it claims to, not a simulated one.
 
+Add `--report <path>` to write a self-contained HTML report (results,
+per-test methodology, timings, pass/fail badges — no external assets, no
+JavaScript) instead of just printing to the console:
+
+```bash
+zerovault attack --report audit.html
+```
+
+The dashboard also has an **Audit** page (`/audit`) showing the same
+results — the CLI and the web page share one in-memory report from the
+last run, so running the suite from either place updates both.
+
 ## Threat model
 
 ### What ZeroVault protects against

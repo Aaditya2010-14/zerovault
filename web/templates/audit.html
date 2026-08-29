@@ -1,0 +1,82 @@
+{{define "content"}}
+<h1>Security Audit</h1>
+
+{{if not .HasReport}}
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-state-icon">🛡</div>
+    <h3>No audit has been run yet</h3>
+    <p>ZeroVault ships with its own attack suite — real PBKDF2/AES-GCM cracking attempts and real HTTP attacks against this dashboard, run against a disposable fixture vault. Run it to see the results.</p>
+    <form method="post" action="/audit/run" style="margin-top: 1rem;">
+      <button type="submit">Run Security Audit</button>
+    </form>
+  </div>
+</div>
+{{else}}
+
+<div class="card">
+  <div class="mini-stats">
+    <div class="mini-stat">
+      <div class="mini-stat-num">{{.Total}}</div>
+      <div class="mini-stat-label">Total Tests</div>
+    </div>
+    <div class="mini-stat mini-stat-success">
+      <div class="mini-stat-num">{{.Passed}}</div>
+      <div class="mini-stat-label">Passed</div>
+    </div>
+    <div class="mini-stat mini-stat-danger">
+      <div class="mini-stat-num">{{.Failed}}</div>
+      <div class="mini-stat-label">Failed</div>
+    </div>
+    <div class="mini-stat {{if eq .Verdict "SECURE"}}mini-stat-success{{else}}mini-stat-danger{{end}}">
+      <div class="mini-stat-num" style="font-size: 1rem;">{{.Verdict}}</div>
+      <div class="mini-stat-label">Verdict</div>
+    </div>
+  </div>
+  <p style="text-align:center; color: var(--text-dim); margin-top: 0.75rem;">
+    Last run {{.RanAt}}
+    <form method="post" action="/audit/run" style="display:inline; margin-left: 0.75rem;">
+      <button type="submit" class="btn-secondary">Re-run Audit</button>
+    </form>
+  </p>
+</div>
+
+<div class="card">
+  <table class="mono" style="width:100%; border-collapse: collapse;">
+    <thead>
+      <tr style="text-align:left; border-bottom: 1px solid var(--border);">
+        <th style="padding: 0.5rem;">Test</th>
+        <th style="padding: 0.5rem;">Category</th>
+        <th style="padding: 0.5rem;">Result</th>
+        <th style="padding: 0.5rem;">Detail</th>
+        <th style="padding: 0.5rem;">Duration</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Results}}
+      <tr style="border-bottom: 1px solid var(--border);">
+        <td style="padding: 0.5rem;">
+          <strong>{{.Name}}</strong>
+          <div style="color: var(--text-dim); font-size: 0.85rem; margin-top: 0.2rem;">{{.Description}}</div>
+        </td>
+        <td style="padding: 0.5rem;">{{.Category}}</td>
+        <td style="padding: 0.5rem;">
+          <span class="strength-badge {{if .Passed}}strength-strong{{else}}strength-weak{{end}}">{{.StatusLabel}}</span>
+        </td>
+        <td style="padding: 0.5rem; color: var(--text-dim); font-size: 0.85rem;">{{.Detail}}</td>
+        <td style="padding: 0.5rem;">{{.Duration}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<div class="tip-grid">
+  <div class="tip-card">
+    <div class="tip-card-icon">📄</div>
+    <strong>Want a shareable report?</strong>
+    <p style="margin:0.4rem 0 0; color: var(--text-dim);">Run <code>zerovault attack --report audit.html</code> from the CLI for a standalone HTML file you can save or send.</p>
+  </div>
+</div>
+{{end}}
+{{end}}

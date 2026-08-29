@@ -23,6 +23,8 @@ func cmdServe(args []string) int {
 		return 1
 	}
 
+	wireAuditRunner()
+
 	srv, err := web.NewServer(DefaultVaultPath())
 	if err != nil {
 		printError("failed to initialize web server: %v", err)

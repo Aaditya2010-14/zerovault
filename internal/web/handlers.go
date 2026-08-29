@@ -862,6 +862,99 @@ func (s *Server) handleAbout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// --- Security audit ---
+//
+// The web package never imports the attacks package directly: attacks
+// itself imports internal/web to drive its own test harness (it spins up
+// a real web.Server for the web-attack tests), so a direct import back
+// would be a package cycle. Instead cli.cmdServe wires AuditRunner and
+// AuditLastResult into this package at startup, once both packages exist.
+
+// AuditResult is one attack's outcome, in a form the audit page can render
+// without this package depending on the attacks package's types.
+type AuditResult struct {
+	Category    string
+	Name        string
+	Description string
+	Methodology string
+	Passed      bool
+	StatusLabel string
+	Detail      string
+	Duration    string
+}
+
+// AuditSnapshot is a full attack-suite run, ready for template rendering.
+type AuditSnapshot struct {
+	RanAt   time.Time
+	Results []AuditResult
+}
+
+// AuditRunner executes the attack suite and returns its results. Set by
+// cli.cmdServe before the server starts handling requests.
+var AuditRunner func() (AuditSnapshot, error)
+
+// AuditLastResult returns the most recently completed run, if any. Set by
+// cli.cmdServe before the server starts handling requests.
+var AuditLastResult func() (AuditSnapshot, bool)
+
+type auditData struct {
+	baseData
+	HasReport bool
+	RanAt     string
+	Total     int
+	Passed    int
+	Failed    int
+	Verdict   string
+	Results   []AuditResult
+}
+
+func buildAuditData(title string, snap AuditSnapshot, ok bool) auditData {
+	data := auditData{baseData: baseData{Title: title, Authenticated: true}}
+	if !ok {
+		return data
+	}
+	data.HasReport = true
+	data.RanAt = snap.RanAt.Format("2006-01-02 15:04:05")
+	data.Results = snap.Results
+	for _, r := range snap.Results {
+		data.Total++
+		if r.Passed {
+			data.Passed++
+		} else {
+			data.Failed++
+		}
+	}
+	if data.Failed > 0 {
+		data.Verdict = "VULNERABILITIES FOUND"
+	} else {
+		data.Verdict = "SECURE"
+	}
+	return data
+}
+
+func (s *Server) handleAudit(w http.ResponseWriter, r *http.Request) {
+	if AuditLastResult == nil {
+		http.Error(w, "audit runner not configured", http.StatusInternalServerError)
+		return
+	}
+	snap, ok := AuditLastResult()
+	s.render(w, "audit", buildAuditData("Security Audit", snap, ok))
+}
+
+func (s *Server) handleAuditRun(w http.ResponseWriter, r *http.Request) {
+	if AuditRunner == nil {
+		http.Error(w, "audit runner not configured", http.StatusInternalServerError)
+		return
+	}
+	if _, err := AuditRunner(); err != nil {
+		data := buildAuditData("Security Audit", AuditSnapshot{}, false)
+		data.Error = "Failed to run security audit: " + err.Error()
+		s.render(w, "audit", data)
+		return
+	}
+	http.Redirect(w, r, "/audit", http.StatusSeeOther)
+}
+
 // --- Settings / master password rotation ---
 
 type settingsData struct {
