@@ -132,18 +132,43 @@ document.addEventListener("click", function (e) {
   });
 })();
 
-// Copy-to-clipboard buttons: [data-copy] holds the text to copy.
+// Toast/snackbar: a single shared element, reused for every notification.
+function showToast(message) {
+  var toast = document.getElementById("toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toast";
+    toast.className = "toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  clearTimeout(toast._hideTimer);
+  clearTimeout(toast._removeTimer);
+  // Force reflow so re-triggering the animation works on rapid repeat clicks.
+  toast.classList.remove("toast-visible");
+  void toast.offsetWidth;
+  toast.classList.add("toast-visible");
+  toast._hideTimer = setTimeout(function () {
+    toast.classList.remove("toast-visible");
+  }, 2000);
+}
+
+// Copy-to-clipboard buttons: [data-copy] holds the text to copy. The button
+// itself never changes (icon-only, fixed size) — feedback is a toast
+// instead, plus a brief press effect so the click still feels acknowledged.
 document.addEventListener("click", function (e) {
   var btn = e.target.closest("[data-copy]");
   if (!btn) return;
   var text = btn.getAttribute("data-copy");
+
+  btn.classList.add("btn-press");
+  setTimeout(function () {
+    btn.classList.remove("btn-press");
+  }, 100);
+
   if (!navigator.clipboard) return;
   navigator.clipboard.writeText(text).then(function () {
-    var original = btn.textContent;
-    btn.textContent = "Copied!";
-    setTimeout(function () {
-      btn.textContent = original;
-    }, 1500);
+    showToast("Copied to clipboard");
   });
 });
 
