@@ -3,8 +3,11 @@ package cli
 import (
 	"flag"
 	"fmt"
+	"net/url"
+	"os"
 	"time"
 
+	"zerovault/internal/qrcode"
 	"zerovault/internal/totp"
 	"zerovault/internal/vault"
 )
@@ -12,7 +15,7 @@ import (
 // cmdTOTP dispatches "zerovault totp <subcommand>".
 func cmdTOTP(args []string) int {
 	if len(args) == 0 {
-		printError("usage: zerovault totp <add|get|list> ...")
+		printError("usage: zerovault totp <add|get|list|qr> ...")
 		return 1
 	}
 
@@ -23,10 +26,65 @@ func cmdTOTP(args []string) int {
 		return cmdTOTPGet(args[1:])
 	case "list":
 		return cmdTOTPList(args[1:])
+	case "qr":
+		return cmdTOTPQR(args[1:])
 	default:
 		printError("unknown totp subcommand %q", args[0])
 		return 1
 	}
+}
+
+// otpauthURI builds the standard otpauth:// URI a phone authenticator app's
+// QR scanner expects (Key URI Format, as used by Google Authenticator etc.).
+func otpauthURI(name, secret string) string {
+	label := "ZeroVault:" + name
+	q := url.Values{}
+	q.Set("secret", secret)
+	q.Set("issuer", "ZeroVault")
+	return "otpauth://totp/" + url.PathEscape(label) + "?" + q.Encode()
+}
+
+func cmdTOTPQR(args []string) int {
+	fs := flag.NewFlagSet("totp qr", flag.ExitOnError)
+	svgPath := fs.String("svg", "", "write the QR code as an SVG file instead of printing it to the terminal")
+	fs.Parse(args)
+
+	rest := fs.Args()
+	if len(rest) != 1 {
+		printError("usage: zerovault totp qr [-svg out.svg] <name>")
+		return 1
+	}
+	name := rest[0]
+
+	v, _, _, code := loadVaultInteractive()
+	if code != 0 {
+		return code
+	}
+
+	entry, err := v.GetTOTP(name)
+	if err != nil {
+		printError("%v", err)
+		return 1
+	}
+
+	uri := otpauthURI(entry.Name, entry.Secret)
+	m, err := qrcode.Encode([]byte(uri))
+	if err != nil {
+		printError("failed to generate QR code: %v", err)
+		return 1
+	}
+
+	if *svgPath != "" {
+		if err := os.WriteFile(*svgPath, []byte(qrcode.ToSVG(m)), 0o644); err != nil {
+			printError("failed to write SVG: %v", err)
+			return 1
+		}
+		printSuccess("wrote QR code to %s", *svgPath)
+		return 0
+	}
+
+	fmt.Print(qrcode.ToASCII(m))
+	return 0
 }
 
 func cmdTOTPAdd(args []string) int {
