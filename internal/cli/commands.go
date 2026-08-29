@@ -53,6 +53,8 @@ func Run(args []string) int {
 		return cmdServe(args[1:])
 	case "demo":
 		return cmdDemo(args[1:])
+	case "bench":
+		return cmdBench(args[1:])
 	case "attack":
 		return cmdAttack(args[1:])
 	case "encrypt":
@@ -92,6 +94,7 @@ Usage:
   zerovault scan --git <repo> [-depth N]  scan git commit history for leaked secrets
   zerovault serve [-addr host:port]       start the web dashboard
   zerovault demo [-addr host:port]        guided demo: sample vault, fake leaked secrets, dashboard
+  zerovault bench [-json]                 run performance benchmarks (crypto, scanner, vault)
   zerovault attack                        run the built-in security audit (penetration test suite)
   zerovault encrypt <file> [-o out.enc]   encrypt any file with AES-256-GCM
   zerovault decrypt <file.enc> [-o out]   decrypt a ZeroVault-encrypted file
