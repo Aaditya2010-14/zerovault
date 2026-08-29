@@ -1,0 +1,192 @@
+{{define "content"}}
+<div class="about-page">
+
+  <section class="about-hero">
+    <h1 class="about-hero-title">Security built from first principles</h1>
+    <p class="about-hero-sub">An encrypted password manager, TOTP authenticator, and secrets scanner — built entirely with Go's standard library. No frameworks. No packages. No compromise.</p>
+    <div class="about-stats">
+      <div class="about-stat">
+        <div class="about-stat-num">AES-256</div>
+        <div class="about-stat-label">Encryption</div>
+      </div>
+      <div class="about-stat">
+        <div class="about-stat-num">0</div>
+        <div class="about-stat-label">Dependencies</div>
+      </div>
+      <div class="about-stat">
+        <div class="about-stat-num">RFC 6238</div>
+        <div class="about-stat-label">TOTP Standard</div>
+      </div>
+      <div class="about-stat">
+        <div class="about-stat-num">{{.StdlibSubstitutions}}</div>
+        <div class="about-stat-label">Stdlib Substitutions</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="hex-banner">
+    <span class="hex-banner-label">ENCRYPTED VAULT</span>
+    <div class="hex-banner-text" id="hex-banner"></div>
+  </div>
+
+  <section class="about-cards">
+    <div class="about-card">
+      <div class="about-card-icon">🔐</div>
+      <h3>Encrypted Vault</h3>
+      <p>Store passwords in an AES-256-GCM encrypted file. Master password never touches disk — it's transformed through 100,000 rounds of PBKDF2 to derive the encryption key.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">crypto/aes</span>
+        <span class="tech-tag">crypto/cipher</span>
+        <span class="tech-tag">PBKDF2</span>
+        <span class="tech-tag">GCM</span>
+      </div>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">🔑</div>
+      <h3>TOTP Authenticator</h3>
+      <p>Generate 6-digit two-factor codes compatible with Google Authenticator. Implemented directly from RFC 6238 using HMAC-SHA1 — verified to match real authenticator apps.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">crypto/hmac</span>
+        <span class="tech-tag">crypto/sha1</span>
+        <span class="tech-tag">RFC 6238</span>
+        <span class="tech-tag">RFC 4226</span>
+      </div>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">🔍</div>
+      <h3>Secrets Scanner</h3>
+      <p>Scan codebases for leaked API keys, tokens, and passwords. Pattern matching for known formats plus Shannon entropy analysis for unknown secrets.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">regexp</span>
+        <span class="tech-tag">math</span>
+        <span class="tech-tag">filepath</span>
+        <span class="tech-tag">entropy</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="terminal">
+    <div class="terminal-bar">
+      <span class="term-dot term-dot-red"></span>
+      <span class="term-dot term-dot-yellow"></span>
+      <span class="term-dot term-dot-green"></span>
+      <span class="terminal-title">zerovault — bash</span>
+    </div>
+    <div class="terminal-body">
+      <div class="term-line"><span class="term-green">$ </span><span class="term-white">zerovault add github</span> <span class="term-blue">--user</span> <span class="term-amber">dev@mail.com</span> <span class="term-blue">--generate</span> <span class="term-amber">24</span></div>
+      <div class="term-line"><span class="term-gray">Generated: </span><span class="term-green">mR7$kP9xL2@nQ4wT8vY5jH3d</span></div>
+      <div class="term-line"><span class="term-gray">Entry 'github' saved and encrypted.</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="term-green">$ </span><span class="term-white">zerovault totp get</span> <span class="term-amber">github-2fa</span></div>
+      <div class="term-line"><span class="term-gray">Code: </span><span class="term-green term-large">492 037</span> <span class="term-gray">expires in 18s</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="term-green">$ </span><span class="term-white">zerovault scan</span> <span class="term-amber">~/my-project/</span></div>
+      <div class="term-line"><span class="term-red">CRITICAL</span> <span class="term-gray">config.py:3</span> <span class="term-gray">AWS Access Key detected</span></div>
+      <div class="term-line"><span class="term-gray">          AKIA</span><span class="term-red">IOSFODNN7EXAMPLE</span></div>
+      <div class="term-line"><span class="term-red">HIGH    </span><span class="term-gray">.env:7</span> <span class="term-gray">Generic API key assignment</span></div>
+    </div>
+  </section>
+
+  <section class="about-arch">
+    <div class="arch-diagram">
+      <div class="arch-box">CLI Interface</div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-row">
+        <div class="arch-box">Vault</div>
+        <div class="arch-box">TOTP</div>
+        <div class="arch-box">Scanner</div>
+      </div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-box arch-core">
+        Crypto Core
+        <div class="arch-box-sub">AES-256-GCM | PBKDF2 | crypto/rand</div>
+      </div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-box arch-stdlib">
+        Go Standard Library
+        <div class="arch-box-sub">crypto/* | encoding/json | uuid | net/http | html/template</div>
+      </div>
+    </div>
+    <div class="arch-decisions">
+      <div class="decision">
+        <div class="decision-q">Why AES-GCM over AES-CBC?</div>
+        <div class="decision-a">GCM provides authenticated encryption — it detects tampering automatically.</div>
+      </div>
+      <div class="decision">
+        <div class="decision-q">Why PBKDF2 over Argon2?</div>
+        <div class="decision-a">Argon2 lives in golang.org/x/crypto, which is NOT part of Go's standard library.</div>
+      </div>
+      <div class="decision">
+        <div class="decision-q">Why SHA-1 for TOTP?</div>
+        <div class="decision-a">RFC 6238 specifies it. Google Authenticator expects it. HMAC-SHA1 remains secure.</div>
+      </div>
+      <div class="decision">
+        <div class="decision-q">Why crypto/rand, never math/rand?</div>
+        <div class="decision-a">math/rand is deterministic — knowing the seed lets you predict every output.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="about-threat">
+    <div class="threat-card threat-good">
+      <h3>PROTECTED</h3>
+      <ul class="threat-list">
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Vault access</strong> — AES-256-GCM makes the file unreadable without the master password</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Brute force</strong> — PBKDF2 with 100K iterations limits attempts to ~3-5/second</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Tampering</strong> — GCM authentication tag detects any modification</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Weak passwords</strong> — crypto/rand generates unpredictable passwords</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Timing attacks</strong> — constant-time comparison via crypto/subtle</li>
+      </ul>
+    </div>
+    <div class="threat-card threat-bad">
+      <h3>NOT PROTECTED</h3>
+      <ul class="threat-list">
+        <li><span class="threat-mark threat-mark-bad">✗</span> <strong>Keyloggers</strong> — no application can defend against OS-level input capture</li>
+        <li><span class="threat-mark threat-mark-bad">✗</span> <strong>Memory forensics</strong> — plaintext exists in process memory while unlocked</li>
+        <li><span class="threat-mark threat-mark-bad">✗</span> <strong>Password reuse</strong> — a leaked master password compromises the vault</li>
+        <li><span class="threat-mark threat-mark-bad">✗</span> <strong>GPU attacks</strong> — PBKDF2 is less resistant than argon2 (not in Go stdlib)</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="about-gomod">
+    <h2 class="about-gomod-title">go.mod is empty.</h2>
+    <p class="about-gomod-sub">Every cryptographic operation, every network call, every file operation — composed entirely from Go's audited standard library.</p>
+    <pre class="gomod-block"><span class="term-green">$ cat go.mod</span>
+module zerovault
+
+go 1.27
+
+<span class="term-gray">// no require block. zero dependencies.</span></pre>
+  </section>
+
+  <footer class="about-footer">
+    Built for Zero Dependency 2026 · Track E — Security &amp; Crypto Utilities
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  var el = document.getElementById("hex-banner");
+  if (!el) return;
+
+  var hexChars = "0123456789abcdef";
+  var length = 180;
+  var chars = [];
+  for (var i = 0; i < length; i++) {
+    chars.push(hexChars[Math.floor(Math.random() * hexChars.length)]);
+  }
+  el.textContent = chars.join("");
+
+  setInterval(function () {
+    var swaps = 6 + Math.floor(Math.random() * 7); // 6-12 characters
+    for (var i = 0; i < swaps; i++) {
+      var idx = Math.floor(Math.random() * length);
+      chars[idx] = hexChars[Math.floor(Math.random() * hexChars.length)];
+    }
+    el.textContent = chars.join("");
+  }, 80);
+})();
+</script>
+{{end}}
