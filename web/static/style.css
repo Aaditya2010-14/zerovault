@@ -1215,13 +1215,15 @@ input[type="range"]::-moz-range-thumb {
   max-width: 100%;
 }
 
-.gen-output-box .code { overflow-wrap: break-word; word-break: break-all; }
+.gen-output-box .code { overflow-wrap: break-word; word-break: break-all; letter-spacing: normal; }
 
-/* Font size tiers by generated password length: <=20 chars, 21-40, 41-60, 61+ */
-.gen-output-box.gen-output-xl { font-size: 24px; }
-.gen-output-box.gen-output-lg { font-size: 20px; }
-.gen-output-box.gen-output-md { font-size: 16px; }
-.gen-output-box.gen-output-sm { font-size: 14px; }
+/* Font size tiers by generated password length: <=20 chars, 21-40, 41-60, 61+.
+   Targets the .code child directly — .code sets its own explicit font-size
+   (1.75rem) that would otherwise win over anything set on the parent box. */
+.gen-output-box.gen-output-xl .code { font-size: 24px; }
+.gen-output-box.gen-output-lg .code { font-size: 20px; }
+.gen-output-box.gen-output-md .code { font-size: 16px; }
+.gen-output-box.gen-output-sm .code { font-size: 14px; }
 
 .gen-stat-row { display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.85rem; border-bottom: 1px solid var(--border); }
 .gen-stat-row:last-child { border-bottom: none; }
