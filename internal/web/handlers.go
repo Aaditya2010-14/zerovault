@@ -331,6 +331,19 @@ func (s *Server) handleEntryEditSubmit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "an error occurred", http.StatusInternalServerError)
 		return
 	}
+
+	if password != "" && health.IsBreached(password) {
+		entry, _ := sess.vault.Get(name)
+		s.render(w, "edit", struct {
+			baseData
+			Entry *vault.Entry
+		}{baseData{
+			Title: "Edit " + name, Authenticated: true,
+			Success: "Entry updated.",
+			Error:   "Warning: this password appears in known breach databases. Consider using a generated password instead.",
+		}, entry})
+		return
+	}
 	http.Redirect(w, r, "/entry/"+name, http.StatusSeeOther)
 }
 
@@ -364,6 +377,17 @@ func (s *Server) handleAddSubmit(w http.ResponseWriter, r *http.Request) {
 	if err := s.saveSession(sess); err != nil {
 		s.logger.Error("failed to save vault after add", "error", err)
 		http.Error(w, "an error occurred", http.StatusInternalServerError)
+		return
+	}
+
+	if health.IsBreached(password) {
+		s.render(w, "add", struct {
+			baseData
+		}{baseData{
+			Title: "Add Entry", Authenticated: true,
+			Success: fmt.Sprintf("Entry %q added.", name),
+			Error:   "Warning: this password appears in known breach databases. Consider using a generated password instead.",
+		}})
 		return
 	}
 	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
@@ -432,6 +456,8 @@ type generateData struct {
 	DigitCount, SymbolCount       int
 	CrackTimeOnline               string // 10 guesses/sec — a rate-limited login form
 	CrackTimeOffline              string // 10B guesses/sec — an offline GPU attack on a stolen hash
+	BreachChecked                 bool   // always true once a password has been generated
+	Breached                      bool   // should always be false for a truly random password — shown as proof of thoroughness
 }
 
 func (s *Server) handleGenerateSubmit(w http.ResponseWriter, r *http.Request) {
@@ -462,6 +488,8 @@ func (s *Server) handleGenerateSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data.Generated = pw
+	data.BreachChecked = true
+	data.Breached = health.IsBreached(pw)
 	if size := vcrypto.AlphabetSize(vcrypto.PasswordOptions{
 		Upper: data.Upper, Lower: data.Lower, Digits: data.Digits, Symbols: data.Symbols,
 	}); size > 0 {

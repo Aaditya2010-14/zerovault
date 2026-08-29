@@ -109,6 +109,9 @@ func Analyze(v *vault.Vault, now time.Time) Report {
 		if isCommonPassword(e.Password) {
 			report.Critical = append(report.Critical, Issue{fmt.Sprintf("%s: password is in common passwords list", e.Name)})
 		}
+		if IsBreached(e.Password) {
+			report.Critical = append(report.Critical, Issue{fmt.Sprintf("%s: password appears in known breach databases", e.Name)})
+		}
 		if hasCommonPattern(e.Password) {
 			report.Critical = append(report.Critical, Issue{fmt.Sprintf("%s: password contains a common pattern (123/abc/qwerty)", e.Name)})
 		}

@@ -318,3 +318,26 @@ same algorithm pre-written.
 implemented — enough for an `otpauth://` URI's typical length — rather than
 the full version-1-through-40 auto-sizing table a general-purpose QR
 library supports for arbitrary payloads.
+
+## 21. Offline breach-password check — `haveibeenpwned` API client or a
+breach-database package
+
+**Used instead:** `internal/health/breached.go` embeds SHA-256 hashes of
+900+ commonly breached/reused passwords directly in the compiled binary
+(only the hashes — never plaintext — so the source itself can't leak a
+password list). `IsBreached` hashes the candidate password with
+`crypto/sha256` and does an O(1) map lookup against the embedded set.
+
+**Why it works:** Checking whether a password has been breached doesn't
+require a live service — a known-compromised password is known in advance,
+so a hash comparison against a pre-computed set is exactly equivalent to
+querying an API, minus the network round-trip, the third-party dependency,
+and the (admittedly k-anonymized, but still external) exposure of a hash
+prefix to someone else's server.
+
+**Trade-off:** The embedded set (900+ entries) is a rounding error next to
+haveibeenpwned's hundreds of millions of breached passwords — this catches
+the extremely common cases (`password123`, `qwerty123`, reused names +
+digits) but not a rarer leaked password. Good enough to demonstrate the
+technique and catch the passwords people actually reuse; not a replacement
+for a real breach corpus if this shipped as a real product.

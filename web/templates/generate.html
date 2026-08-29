@@ -62,6 +62,9 @@
           <div class="gen-stat-row"><span>Symbols</span><span>{{.SymbolCount}}</span></div>
           <div class="gen-stat-row"><span>Crack time (online, 10/s)</span><span>{{.CrackTimeOnline}}</span></div>
           <div class="gen-stat-row"><span>Crack time (offline, 10B/s)</span><span>{{.CrackTimeOffline}}</span></div>
+          {{if .BreachChecked}}
+          <div class="gen-stat-row"><span>Breach database check</span><span>{{if .Breached}}⚠ Found in breach database{{else}}✓ Not found in 900+ known breaches{{end}}</span></div>
+          {{end}}
         </div>
         {{else}}
         <div class="empty-state">
