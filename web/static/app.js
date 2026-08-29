@@ -72,11 +72,16 @@ document.addEventListener("click", function (e) {
   });
   if (links.length === 0) return;
 
-  function moveTo(el) {
+  function moveTo(el, instant) {
+    if (instant) pill.style.transition = "none";
     pill.style.width = el.offsetWidth + "px";
     pill.style.height = el.offsetHeight + "px";
     pill.style.transform = "translate(" + el.offsetLeft + "px, " + el.offsetTop + "px)";
     pill.style.opacity = "1";
+    if (instant) {
+      pill.offsetHeight; // force reflow so the instant placement paints before transitions resume
+      pill.style.transition = "";
+    }
   }
 
   var active = links.find(function (a) {
@@ -97,7 +102,7 @@ document.addEventListener("click", function (e) {
   });
 
   if (active) {
-    requestAnimationFrame(function () { moveTo(active); });
+    requestAnimationFrame(function () { moveTo(active, true); });
   }
 })();
 
