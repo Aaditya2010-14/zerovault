@@ -112,6 +112,15 @@ func Exists(path string) bool {
 // behavior any concurrent save to one file would have anyway.
 func writeFileAtomic(path string, data []byte) error {
 	dir := filepath.Dir(path)
+	// The vault's parent directory (~/.zerovault by default) may not exist
+	// yet — e.g. a freshly cloned repo where 'zerovault serve' is run
+	// directly and a vault is created from the web unlock form, which
+	// never had the CLI's own 'init' command run first to create it.
+	// os.CreateTemp fails outright if dir is missing, so ensure it exists
+	// before every write, not just on the CLI's dedicated init path.
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return fmt.Errorf("vault: failed to create vault directory: %w", err)
+	}
 	tmpFile, err := os.CreateTemp(dir, filepath.Base(path)+".*.tmp")
 	if err != nil {
 		return fmt.Errorf("vault: failed to create temp file: %w", err)

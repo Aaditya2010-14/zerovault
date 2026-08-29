@@ -99,7 +99,7 @@ func (s *Server) handleUnlockSubmit(w http.ResponseWriter, r *http.Request) {
 		}
 		v = vault.New()
 		if err := vault.Save(s.vaultPath, password, v); err != nil {
-			s.renderUnlockError(w, "failed to create vault")
+			s.renderUnlockError(w, fmt.Sprintf("failed to create vault: %v", err))
 			return
 		}
 	}

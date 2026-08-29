@@ -8,6 +8,26 @@ import (
 	"testing"
 )
 
+// TestSave_CreatesMissingParentDirectory guards against a real bug found in
+// the field: 'zerovault serve' on a freshly cloned repo (no prior 'zerovault
+// init', so ~/.zerovault never existed) failed to create a vault from the
+// web unlock form with a bare "failed to create vault" error, because
+// writeFileAtomic's os.CreateTemp fails outright when its target directory
+// doesn't exist yet. Save must create that directory itself rather than
+// assuming a caller (like the CLI's dedicated init command) already did.
+func TestSave_CreatesMissingParentDirectory(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "nested", "does-not-exist-yet", "vault.db")
+
+	if err := Save(path, "master-pw", New()); err != nil {
+		t.Fatalf("Save into a missing parent directory: %v", err)
+	}
+
+	if _, err := Load(path, "master-pw"); err != nil {
+		t.Fatalf("Load after Save into a missing parent directory: %v", err)
+	}
+}
+
 func TestSaveLoad_RoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.vault")

@@ -79,6 +79,39 @@ func TestDashboard_RedirectsToUnlockWithoutSession(t *testing.T) {
 	}
 }
 
+// TestUnlock_CreatesVaultWhenParentDirectoryMissing guards against a real
+// bug: running 'zerovault serve' on a machine that never had 'zerovault
+// init' run first (so ~/.zerovault doesn't exist yet — exactly what happens
+// on a freshly cloned repo) made the web unlock form's vault-creation path
+// fail with "failed to create vault", since vault.Save's temp-file write
+// couldn't create a file inside a directory that doesn't exist.
+func TestUnlock_CreatesVaultWhenParentDirectoryMissing(t *testing.T) {
+	vaultPath := filepath.Join(t.TempDir(), "not-created-yet", "nested", "vault.db")
+
+	srv, err := NewServer(vaultPath)
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	handler, err := srv.Handler()
+	if err != nil {
+		t.Fatalf("Handler: %v", err)
+	}
+	ts := httptest.NewServer(handler)
+	t.Cleanup(ts.Close)
+
+	client := newTestClient(t)
+	unlockNewVault(t, ts, client, "testpass123")
+
+	resp, err := client.Get(ts.URL + "/dashboard")
+	if err != nil {
+		t.Fatalf("GET /dashboard: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("got status %d, want 200 (vault should have been created despite the missing parent dir)", resp.StatusCode)
+	}
+}
+
 func TestUnlock_CreatesVaultAndGrantsSession(t *testing.T) {
 	ts := newTestServer(t)
 	client := newTestClient(t)
