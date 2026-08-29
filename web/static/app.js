@@ -60,6 +60,47 @@ document.addEventListener("click", function (e) {
   }
 });
 
+// Sliding nav pill: a blue block that glides beneath the tab you're on
+// (current page) and previews under whichever tab you hover.
+(function () {
+  var nav = document.querySelector("nav");
+  var pill = document.querySelector(".nav-pill");
+  if (!nav || !pill) return;
+
+  var links = Array.prototype.slice.call(nav.querySelectorAll("a")).filter(function (a) {
+    return !a.classList.contains("brand");
+  });
+  if (links.length === 0) return;
+
+  function moveTo(el) {
+    pill.style.width = el.offsetWidth + "px";
+    pill.style.height = el.offsetHeight + "px";
+    pill.style.transform = "translate(" + el.offsetLeft + "px, " + el.offsetTop + "px)";
+    pill.style.opacity = "1";
+  }
+
+  var active = links.find(function (a) {
+    return a.getAttribute("href") === window.location.pathname;
+  });
+  if (active) active.classList.add("active");
+
+  links.forEach(function (a) {
+    a.addEventListener("mouseenter", function () { moveTo(a); });
+  });
+
+  nav.addEventListener("mouseleave", function () {
+    if (active) {
+      moveTo(active);
+    } else {
+      pill.style.opacity = "0";
+    }
+  });
+
+  if (active) {
+    requestAnimationFrame(function () { moveTo(active); });
+  }
+})();
+
 // Confirm destructive actions.
 document.addEventListener("submit", function (e) {
   var form = e.target;
