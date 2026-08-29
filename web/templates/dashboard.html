@@ -1,19 +1,19 @@
 {{define "content"}}
 <h1>Vault</h1>
 <div style="margin-bottom: 1rem;"><a href="/add" class="btn">+ Add entry</a></div>
-<div class="card">
-  {{if not .Entries}}
-    <div class="empty">No entries yet. <a href="/add">Add your first one</a>.</div>
-  {{else}}
+{{if not .Entries}}
+  <div class="card"><div class="empty">No entries yet. <a href="/add">Add your first one</a>.</div></div>
+{{else}}
+  <div class="search-bar">
+    <input type="search" id="entry-search" placeholder="Search entries…" autocomplete="off">
+  </div>
+  <div class="entry-grid" id="entry-grid">
     {{range .Entries}}
-    <div class="entry-row">
-      <div>
-        <div class="entry-name"><a href="/entry/{{.Name}}" style="color:inherit;text-decoration:none;">{{.Name}}</a></div>
-        {{if .Username}}<div class="entry-sub">{{.Username}}</div>{{end}}
-      </div>
-      <a href="/entry/{{.Name}}" class="btn-secondary btn">View</a>
-    </div>
+    <a href="/entry/{{.Name}}" class="entry-card" data-name="{{.Name}}">
+      <div class="entry-name">{{.Name}}</div>
+      {{if .Username}}<div class="entry-sub">{{.Username}}</div>{{end}}
+    </a>
     {{end}}
-  {{end}}
-</div>
+  </div>
+{{end}}
 {{end}}

@@ -1,5 +1,7 @@
 {{define "content"}}
+<div class="unlock-page">
 <div class="unlock-wrap">
+  <div class="unlock-logo">ZeroVault</div>
   <div class="card">
     <h1>{{if .VaultExists}}Unlock Vault{{else}}Create Vault{{end}}</h1>
     <form method="post" action="/unlock">
@@ -14,5 +16,6 @@
       </div>
     </form>
   </div>
+</div>
 </div>
 {{end}}

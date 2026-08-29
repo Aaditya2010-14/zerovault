@@ -60,50 +60,31 @@ document.addEventListener("click", function (e) {
   }
 });
 
-// Sliding nav pill: a blue block that glides beneath the tab you're on
-// (current page) and previews under whichever tab you hover.
+// Highlight the current section in the nav.
 (function () {
-  var nav = document.querySelector("nav");
-  var pill = document.querySelector(".nav-pill");
-  if (!nav || !pill) return;
-
-  var links = Array.prototype.slice.call(nav.querySelectorAll("a")).filter(function (a) {
-    return !a.classList.contains("brand");
-  });
-  if (links.length === 0) return;
-
-  function moveTo(el, instant) {
-    if (instant) pill.style.transition = "none";
-    pill.style.width = el.offsetWidth + "px";
-    pill.style.height = el.offsetHeight + "px";
-    pill.style.transform = "translate(" + el.offsetLeft + "px, " + el.offsetTop + "px)";
-    pill.style.opacity = "1";
-    if (instant) {
-      pill.offsetHeight; // force reflow so the instant placement paints before transitions resume
-      pill.style.transition = "";
-    }
-  }
-
-  var active = links.find(function (a) {
-    return a.getAttribute("href") === window.location.pathname;
-  });
-  if (active) active.classList.add("active");
-
+  var links = document.querySelectorAll("nav .nav-links a");
   links.forEach(function (a) {
-    a.addEventListener("mouseenter", function () { moveTo(a); });
-  });
-
-  nav.addEventListener("mouseleave", function () {
-    if (active) {
-      moveTo(active);
-    } else {
-      pill.style.opacity = "0";
+    if (a.getAttribute("href") === window.location.pathname) {
+      a.classList.add("active");
     }
   });
+})();
 
-  if (active) {
-    requestAnimationFrame(function () { moveTo(active, true); });
-  }
+// Live-filter the vault entry grid as you type.
+(function () {
+  var input = document.getElementById("entry-search");
+  var grid = document.getElementById("entry-grid");
+  if (!input || !grid) return;
+
+  var cards = Array.prototype.slice.call(grid.querySelectorAll(".entry-card"));
+
+  input.addEventListener("input", function () {
+    var q = input.value.trim().toLowerCase();
+    cards.forEach(function (card) {
+      var name = (card.getAttribute("data-name") || "").toLowerCase();
+      card.style.display = name.indexOf(q) === -1 ? "none" : "";
+    });
+  });
 })();
 
 // Confirm destructive actions.

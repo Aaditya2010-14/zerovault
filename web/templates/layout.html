@@ -9,19 +9,22 @@
 </head>
 <body>
   <nav>
-    <span class="nav-pill" aria-hidden="true"></span>
     <a class="brand" href="/dashboard">ZeroVault</a>
     {{if .Authenticated}}
-      <a href="/dashboard">Vault</a>
-      <a href="/totp">TOTP</a>
-      <a href="/generate">Generate</a>
-      <a href="/scanner">Scanner</a>
-      <a href="/health">Health</a>
-      <a href="/file">Encrypt/Decrypt</a>
-      <a href="/settings">Settings</a>
-      <form method="post" action="/lock">
-        <button type="submit" class="btn-secondary">Lock</button>
-      </form>
+      <div class="nav-links">
+        <a href="/dashboard">Vault</a>
+        <a href="/totp">TOTP</a>
+        <a href="/generate">Generate</a>
+        <a href="/scanner">Scanner</a>
+        <a href="/health">Health</a>
+        <a href="/file">Encrypt/Decrypt</a>
+        <a href="/settings">Settings</a>
+      </div>
+      <div class="nav-right">
+        <form method="post" action="/lock">
+          <button type="submit" class="btn-lock">Lock</button>
+        </form>
+      </div>
     {{end}}
   </nav>
   <main>
