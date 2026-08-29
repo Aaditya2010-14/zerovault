@@ -9,6 +9,26 @@ algorithms: only composition of `crypto/aes`, `crypto/cipher`,
 Built for the Zero Dependency 2026 Hackathon, Track E (Security & Crypto
 Utilities).
 
+**Features:**
+- Encrypted password vault (AES-256-GCM, PBKDF2-derived key) — add, edit,
+  delete, and browse entries from the CLI or the web dashboard
+- TOTP 2FA code generator (RFC 6238), including QR code generation
+  (`zerovault totp qr`) for re-enrolling a secret in an authenticator app
+- Secrets scanner for a working directory or a git repository's full commit
+  history, pattern- and entropy-based
+- File encryption/decryption (`zerovault encrypt`/`decrypt`) for arbitrary
+  files, independent of the vault
+- Password health dashboard — flags weak, reused, and stale passwords
+  across every vault entry
+- Cryptographically random password generator with live strength estimate
+  and crack-time projection
+- Master password rotation (`zerovault rekey`) — re-encrypts the entire
+  vault under a freshly derived key
+- Local-only web dashboard (`zerovault serve`) mirroring every CLI
+  capability, plus an About page describing the project
+- Built-in penetration test suite (`zerovault attack`) — 12 real attacks
+  against the live crypto and web code, not simulated
+
 Project overview page: `landing.html` in this repo, published at
 `https://Aaditya2010-14.github.io/zerovault/landing.html` once GitHub Pages
 is enabled on this repo.
@@ -301,6 +321,13 @@ hackathon-scope trade-off)
   (`"POST /delete/{name}"`), and Go 1.25 added `CrossOriginProtection`
   built in. Between those two additions, the stdlib router covers what a
   small dashboard like this needs without extra abstraction.
+- **Reading `.git/objects` directly, not shelling out to `git`.** Parsing
+  the object store (zlib-inflating blobs/trees/commits and walking the
+  commit graph by hash, in `internal/gitscan`) keeps the scanner working
+  anywhere Go runs, with no dependency on a `git` binary being installed or
+  on its output format being stable across versions — and it's a small
+  enough format that reimplementing the read path is less risk than
+  shelling out and parsing `git log`/`git show` text output.
 - **A dedicated `attacks/` package instead of inline demo commands.** Every
   claim in the threat model above ("XSS is blocked", "nonce reuse never
   happens") is backed by a real, runnable attack in `attacks/`, not just
@@ -341,8 +368,8 @@ zerovault
 ## Reproducible build
 
 ```
-Build 1: 3d154ca2a7d01e6527edfb1475e04443352f917e621a39f663ce77d3c54dd8b3
-Build 2: 3d154ca2a7d01e6527edfb1475e04443352f917e621a39f663ce77d3c54dd8b3
+Build 1: b8c39e9902b425bf0feefa93996fe1e2e5555df68f665be141389dc029649b9d
+Build 2: b8c39e9902b425bf0feefa93996fe1e2e5555df68f665be141389dc029649b9d
 ```
 
 Hashes match — byte-identical output from two independent `go clean
