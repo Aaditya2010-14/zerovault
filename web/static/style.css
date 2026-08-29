@@ -442,18 +442,25 @@ body:has(.about-page) main { max-width: 1100px; }
 }
 
 .hex-banner {
-  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
   background: #0D1117;
   border-radius: var(--radius);
   padding: 1.25rem 1.5rem;
   overflow: hidden;
   box-shadow: var(--shadow);
+  margin-bottom: 3rem;
+  border: 1px solid transparent;
+  transition: border-color 0.25s var(--ease);
+}
+
+.hex-banner:hover {
+  border-color: rgba(63, 185, 80, 0.35);
 }
 
 .hex-banner-label {
-  position: absolute;
-  top: 0.6rem;
-  right: 0.9rem;
+  align-self: flex-end;
   color: var(--success);
   font-size: 0.65rem;
   font-weight: 700;
@@ -466,7 +473,14 @@ body:has(.about-page) main { max-width: 1100px; }
   font-size: 0.85rem;
   line-height: 1.6;
   word-break: break-all;
+  text-align: center;
   opacity: 0.85;
+  transition: opacity 0.25s var(--ease), text-shadow 0.25s var(--ease);
+}
+
+.hex-banner:hover .hex-banner-text {
+  opacity: 1;
+  text-shadow: 0 0 8px rgba(63, 185, 80, 0.65), 0 0 16px rgba(63, 185, 80, 0.35);
 }
 
 .about-cards {

@@ -82,7 +82,7 @@ func (s *Server) handleUnlockSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setSessionCookie(w, token)
-	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+	http.Redirect(w, r, "/about", http.StatusSeeOther)
 }
 
 func (s *Server) renderUnlockError(w http.ResponseWriter, msg string) {

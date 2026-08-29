@@ -70,6 +70,30 @@ document.addEventListener("click", function (e) {
   });
 })();
 
+// About page: scramble the hex-banner text to look like an encrypted vault
+// file, swapping a handful of characters every tick.
+(function () {
+  var el = document.getElementById("hex-banner");
+  if (!el) return;
+
+  var hexChars = "0123456789abcdef";
+  var length = 128;
+  var chars = [];
+  for (var i = 0; i < length; i++) {
+    chars.push(hexChars[Math.floor(Math.random() * hexChars.length)]);
+  }
+  el.textContent = chars.join("");
+
+  setInterval(function () {
+    var swaps = 6 + Math.floor(Math.random() * 7); // 6-12 characters
+    for (var i = 0; i < swaps; i++) {
+      var idx = Math.floor(Math.random() * length);
+      chars[idx] = hexChars[Math.floor(Math.random() * hexChars.length)];
+    }
+    el.textContent = chars.join("");
+  }, 80);
+})();
+
 // Live-filter the vault entry grid as you type.
 (function () {
   var input = document.getElementById("entry-search");
