@@ -28,6 +28,17 @@ func ReadPassword(prompt string) (string, error) {
 	return strings.TrimRight(pw, "\r\n"), nil
 }
 
+// ReadLine prompts and reads a single line from stdin with normal echo —
+// used for input that doesn't need masking, like a 6-digit TOTP code.
+func ReadLine(prompt string) (string, error) {
+	fmt.Print(prompt)
+	line, err := stdinReader.ReadString('\n')
+	if err != nil {
+		return "", fmt.Errorf("cli: failed to read input: %w", err)
+	}
+	return strings.TrimRight(line, "\r\n"), nil
+}
+
 // readPasswordFallback reads a line from stdin with normal echo. Used when
 // the terminal-raw-mode syscalls aren't applicable (non-TTY stdin).
 func readPasswordFallback() (string, error) {

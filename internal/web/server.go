@@ -13,6 +13,7 @@ import (
 type Server struct {
 	templates   templateSet
 	sessions    *sessionStore
+	pending     *pendingStore
 	vaultPath   string
 	logger      *slog.Logger
 	unlockLimit *unlockLimiter
@@ -27,6 +28,7 @@ func NewServer(vaultPath string) (*Server, error) {
 	return &Server{
 		templates:   templates,
 		sessions:    newSessionStore(),
+		pending:     newPendingStore(),
 		vaultPath:   vaultPath,
 		logger:      slog.Default(),
 		unlockLimit: newUnlockLimiter(),
@@ -46,6 +48,7 @@ func (s *Server) Handler() (http.Handler, error) {
 	mux.HandleFunc("GET /{$}", s.handleRoot)
 	mux.HandleFunc("GET /unlock", s.handleUnlockForm)
 	mux.HandleFunc("POST /unlock", s.handleUnlockSubmit)
+	mux.HandleFunc("POST /unlock/2fa", s.handleUnlock2FASubmit)
 	mux.HandleFunc("POST /lock", s.requireSession(s.handleLock))
 
 	mux.HandleFunc("GET /dashboard", s.requireSession(s.handleDashboard))
@@ -79,6 +82,9 @@ func (s *Server) Handler() (http.Handler, error) {
 	mux.HandleFunc("GET /settings/export/encrypted", s.requireSession(s.handleSettingsExportEncrypted))
 	mux.HandleFunc("GET /settings/export/json", s.requireSession(s.handleSettingsExportJSON))
 	mux.HandleFunc("POST /settings/delete-all", s.requireSession(s.handleSettingsDeleteAll))
+	mux.HandleFunc("POST /settings/2fa/setup", s.requireSession(s.handleSettings2FASetup))
+	mux.HandleFunc("POST /settings/2fa/confirm", s.requireSession(s.handleSettings2FAConfirm))
+	mux.HandleFunc("POST /settings/2fa/disable", s.requireSession(s.handleSettings2FADisable))
 
 	mux.HandleFunc("GET /file", s.requireSession(s.handleFileForm))
 	mux.HandleFunc("POST /file/encrypt", s.requireSession(s.handleFileEncrypt))

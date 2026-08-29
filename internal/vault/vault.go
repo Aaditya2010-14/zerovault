@@ -25,10 +25,32 @@ type Entry struct {
 
 // Vault is the decrypted, in-memory contents of a vault file: password
 // entries and TOTP entries, both keyed by name within their own set.
+//
+// TwoFAEnabled/TwoFASecret implement optional two-factor unlock for the
+// vault itself: when enabled, unlocking requires both the master password
+// AND a current TOTP code. The secret lives inside the vault struct like
+// everything else, so it is encrypted at rest under the master password —
+// no separate storage or key-management scheme needed (see storage.go:
+// the whole struct is serialized to JSON and AES-GCM-sealed as one blob).
 type Vault struct {
-	Version     int          `json:"version"`
-	Entries     []*Entry     `json:"entries"`
-	TOTPEntries []*TOTPEntry `json:"totp_entries"`
+	Version      int          `json:"version"`
+	Entries      []*Entry     `json:"entries"`
+	TOTPEntries  []*TOTPEntry `json:"totp_entries"`
+	TwoFAEnabled bool         `json:"two_fa_enabled,omitempty"`
+	TwoFASecret  string       `json:"two_fa_secret,omitempty"`
+}
+
+// Enable2FA turns on two-factor unlock, storing secret (Base32) as the
+// vault's TOTP seed for future unlock attempts.
+func (v *Vault) Enable2FA(secret string) {
+	v.TwoFAEnabled = true
+	v.TwoFASecret = secret
+}
+
+// Disable2FA turns off two-factor unlock and discards the stored secret.
+func (v *Vault) Disable2FA() {
+	v.TwoFAEnabled = false
+	v.TwoFASecret = ""
 }
 
 // New creates an empty vault.

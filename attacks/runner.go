@@ -134,6 +134,10 @@ var registry = []Attack{
 		"Brute-forces the full 000000-999999 keyspace looking for the currently valid 6-digit TOTP code, without knowing the underlying secret.",
 		"This attack is expected to eventually succeed — TOTP's security model relies on the secret being unknown, not the 6-digit code space (1 million possibilities) being unguessable; real services pair TOTP with attempt-rate limiting, which this suite documents rather than re-implements.",
 		runTOTPBruteForce},
+	{"TOTP ATTACKS", "Vault 2FA unlock bypass (3 vectors)",
+		"Against a disposable vault with two-factor unlock enabled: tries to reach the dashboard with the master password alone, then with the master password plus a wrong TOTP code, then confirms the master password plus the correct code actually works.",
+		"Exercises the real /unlock and /unlock/2fa HTTP endpoints and session cookies exactly as a browser would, checking that no combination short of both correct factors ever yields a session cookie or dashboard access.",
+		runVaultTwoFAUnlock},
 }
 
 // Registry returns the list of every attack this suite runs, including

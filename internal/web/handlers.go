@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"math"
 	"net/http"
@@ -35,11 +36,32 @@ type baseData struct {
 
 // --- Unlock / lock ---
 
+// unlockData backs the unlock template for all three states it can render:
+// the initial password (or create-vault) form, a password error, and the
+// 2FA-code step. Using one named struct (rather than separate anonymous
+// ones per call site) keeps every render call safe against the template
+// referencing .Need2FA — a field an anonymous struct without it would
+// fail to satisfy.
+type unlockData struct {
+	baseData
+	VaultExists bool
+	Need2FA     bool
+}
+
 func (s *Server) handleUnlockForm(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "unlock", struct {
-		baseData
-		VaultExists bool
-	}{
+	// A pending 2FA challenge (from a page refresh mid-flow) resumes at
+	// the code step rather than restarting at the password form.
+	if cookie, err := r.Cookie(pendingCookieName); err == nil {
+		if _, ok := s.pending.get(cookie.Value); ok {
+			s.render(w, "unlock", unlockData{
+				baseData:    baseData{Title: "Two-Factor Code"},
+				VaultExists: true,
+				Need2FA:     true,
+			})
+			return
+		}
+	}
+	s.render(w, "unlock", unlockData{
 		baseData:    baseData{Title: "Unlock"},
 		VaultExists: vault.Exists(s.vaultPath),
 	})
@@ -82,6 +104,27 @@ func (s *Server) handleUnlockSubmit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// A correct password proves identity but, when 2FA is enabled, is not
+	// on its own sufficient to start a session — park the now-decrypted
+	// vault behind a short-lived pending token and demand a TOTP code
+	// before /unlock/2fa promotes it to a real session. This branch is
+	// only reachable *after* the password has already been verified, so
+	// a wrong password never reveals whether 2FA is on.
+	if v.TwoFAEnabled {
+		token, err := s.pending.create(v, password)
+		if err != nil {
+			http.Error(w, "failed to start 2FA challenge", http.StatusInternalServerError)
+			return
+		}
+		setPendingCookie(w, token)
+		s.render(w, "unlock", unlockData{
+			baseData:    baseData{Title: "Two-Factor Code"},
+			VaultExists: true,
+			Need2FA:     true,
+		})
+		return
+	}
+
 	token, err := s.sessions.create(v, password, s.vaultPath)
 	if err != nil {
 		http.Error(w, "failed to start session", http.StatusInternalServerError)
@@ -91,11 +134,56 @@ func (s *Server) handleUnlockSubmit(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/about", http.StatusSeeOther)
 }
 
+// handleUnlock2FASubmit is the second step of unlock when the vault has
+// 2FA enabled: it requires a valid pending-challenge cookie (proof the
+// password step already passed) plus a currently-valid TOTP code.
+func (s *Server) handleUnlock2FASubmit(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie(pendingCookieName)
+	if err != nil {
+		http.Redirect(w, r, "/unlock", http.StatusSeeOther)
+		return
+	}
+	pend, ok := s.pending.get(cookie.Value)
+	if !ok {
+		clearPendingCookie(w)
+		http.Redirect(w, r, "/unlock", http.StatusSeeOther)
+		return
+	}
+
+	if wait := s.unlockLimit.delay(); wait > 0 {
+		time.Sleep(wait)
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+	code := r.FormValue("code")
+
+	key, err := totp.DecodeSecret(pend.vault.TwoFASecret)
+	if err != nil || !totp.Validate(key, code, time.Now(), totp.DefaultPeriod, totp.DefaultDigits, 1) {
+		s.unlockLimit.recordFailure()
+		s.render(w, "unlock", unlockData{
+			baseData:    baseData{Title: "Two-Factor Code", Error: "incorrect code"},
+			VaultExists: true,
+			Need2FA:     true,
+		})
+		return
+	}
+	s.unlockLimit.recordSuccess()
+	s.pending.delete(cookie.Value)
+	clearPendingCookie(w)
+
+	token, err := s.sessions.create(pend.vault, pend.masterPw, s.vaultPath)
+	if err != nil {
+		http.Error(w, "failed to start session", http.StatusInternalServerError)
+		return
+	}
+	setSessionCookie(w, token)
+	http.Redirect(w, r, "/about", http.StatusSeeOther)
+}
+
 func (s *Server) renderUnlockError(w http.ResponseWriter, msg string) {
-	s.render(w, "unlock", struct {
-		baseData
-		VaultExists bool
-	}{
+	s.render(w, "unlock", unlockData{
 		baseData:    baseData{Title: "Unlock", Error: msg},
 		VaultExists: vault.Exists(s.vaultPath),
 	})
@@ -966,6 +1054,30 @@ type settingsData struct {
 	NotesCount   int
 	LastModified string
 	GoVersion    string
+	TwoFAEnabled bool
+	TwoFASetup   *twoFASetupView
+}
+
+// twoFASetupView carries an in-progress (unconfirmed) 2FA setup's QR code
+// and manual-entry secret to the settings template.
+type twoFASetupView struct {
+	Secret string
+	QRSVG  template.HTML
+}
+
+func vaultOTPAuthURI(secret string) string {
+	q := url.Values{}
+	q.Set("secret", secret)
+	q.Set("issuer", "ZeroVault")
+	return "otpauth://totp/" + url.PathEscape("ZeroVault:vault") + "?" + q.Encode()
+}
+
+func build2FASetupView(secret string) (*twoFASetupView, error) {
+	m, err := qrcode.Encode([]byte(vaultOTPAuthURI(secret)))
+	if err != nil {
+		return nil, err
+	}
+	return &twoFASetupView{Secret: secret, QRSVG: template.HTML(qrcode.ToSVG(m))}, nil
 }
 
 // buildSettingsData gathers the read-only vault-info stats shown on the
@@ -988,6 +1100,7 @@ func (s *Server) buildSettingsData(sess *session, title string) settingsData {
 		}
 	}
 	data.TOTPCount = len(sess.vault.ListTOTP())
+	data.TwoFAEnabled = sess.vault.TwoFAEnabled
 	return data
 }
 
@@ -1077,6 +1190,110 @@ func (s *Server) handleSettingsDeleteAll(w http.ResponseWriter, r *http.Request)
 	}
 	data := s.buildSettingsData(sess, "Settings")
 	data.Success = "All vault data has been deleted."
+	s.render(w, "settings", data)
+}
+
+// --- Two-factor unlock setup ---
+
+// handleSettings2FASetup generates a fresh secret and shows its QR code —
+// the secret is held only in the in-memory session (sess.pendingTOTPSecret)
+// until handleSettings2FAConfirm verifies a matching code, so a setup that
+// is never confirmed never touches the vault or disk.
+func (s *Server) handleSettings2FASetup(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFromContext(r)
+	data := s.buildSettingsData(sess, "Settings")
+	if sess.vault.TwoFAEnabled {
+		data.Error = "two-factor unlock is already enabled"
+		s.render(w, "settings", data)
+		return
+	}
+
+	secret, err := totp.GenerateSecret()
+	if err != nil {
+		data.Error = "failed to generate a 2FA secret"
+		s.render(w, "settings", data)
+		return
+	}
+	view, err := build2FASetupView(secret)
+	if err != nil {
+		data.Error = "failed to generate QR code"
+		s.render(w, "settings", data)
+		return
+	}
+	sess.pendingTOTPSecret = secret
+	data.TwoFASetup = view
+	s.render(w, "settings", data)
+}
+
+func (s *Server) handleSettings2FAConfirm(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFromContext(r)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+	code := r.FormValue("code")
+
+	data := s.buildSettingsData(sess, "Settings")
+	if sess.pendingTOTPSecret == "" {
+		data.Error = "no 2FA setup in progress — click \"Set up two-factor unlock\" to start again"
+		s.render(w, "settings", data)
+		return
+	}
+
+	key, err := totp.DecodeSecret(sess.pendingTOTPSecret)
+	if err != nil || !totp.Validate(key, code, time.Now(), totp.DefaultPeriod, totp.DefaultDigits, 1) {
+		data.Error = "incorrect code — two-factor unlock was not enabled"
+		if view, err := build2FASetupView(sess.pendingTOTPSecret); err == nil {
+			data.TwoFASetup = view
+		}
+		s.render(w, "settings", data)
+		return
+	}
+
+	sess.vault.Enable2FA(sess.pendingTOTPSecret)
+	sess.pendingTOTPSecret = ""
+	if err := s.saveSession(sess); err != nil {
+		data.Error = "failed to save vault"
+		s.render(w, "settings", data)
+		return
+	}
+
+	data = s.buildSettingsData(sess, "Settings")
+	data.Success = "Two-factor unlock enabled. Future unlocks require your master password and a TOTP code."
+	s.render(w, "settings", data)
+}
+
+func (s *Server) handleSettings2FADisable(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFromContext(r)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+	code := r.FormValue("code")
+
+	data := s.buildSettingsData(sess, "Settings")
+	if !sess.vault.TwoFAEnabled {
+		data.Error = "two-factor unlock is not enabled"
+		s.render(w, "settings", data)
+		return
+	}
+
+	key, err := totp.DecodeSecret(sess.vault.TwoFASecret)
+	if err != nil || !totp.Validate(key, code, time.Now(), totp.DefaultPeriod, totp.DefaultDigits, 1) {
+		data.Error = "incorrect code — two-factor unlock was not disabled"
+		s.render(w, "settings", data)
+		return
+	}
+
+	sess.vault.Disable2FA()
+	if err := s.saveSession(sess); err != nil {
+		data.Error = "failed to save vault"
+		s.render(w, "settings", data)
+		return
+	}
+
+	data = s.buildSettingsData(sess, "Settings")
+	data.Success = "Two-factor unlock disabled."
 	s.render(w, "settings", data)
 }
 

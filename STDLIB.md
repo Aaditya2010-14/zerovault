@@ -341,3 +341,32 @@ the extremely common cases (`password123`, `qwerty123`, reused names +
 digits) but not a rarer leaked password. Good enough to demonstrate the
 technique and catch the passwords people actually reuse; not a replacement
 for a real breach corpus if this shipped as a real product.
+
+## 22. Two-factor authentication middleware for vault unlock —
+`github.com/pquerna/otp`'s own unlock-flow helpers, or a hosted 2FA
+provider (Auth0, Twilio Authy API, etc.)
+
+**Used instead:** Our own `internal/totp` package (already built for
+per-entry TOTP codes, see #3) reused as-is to gate the vault's own unlock:
+`internal/vault/vault.go` gained `TwoFAEnabled`/`TwoFASecret` fields on the
+`Vault` struct itself, so the secret is encrypted at rest for free — it's
+just more JSON inside the same AES-GCM blob, no separate secret store. The
+web dashboard's `/unlock` → `/unlock/2fa` two-step flow and the CLI's
+`loadVaultInteractive` gate are both built from stdlib `net/http` and
+`crypto/subtle`-backed `totp.Validate`, nothing else.
+
+**Why it works:** TOTP verification is "derive an HMAC-SHA1 code from a
+shared secret and a time step, compare in constant time" — there's no
+protocol negotiation, no external identity provider, no state to
+synchronize with a third party. Once the primitive exists (it already did,
+for per-entry codes), gating a second decrypted resource with it is just
+wiring, not new cryptography.
+
+**Trade-off:** A hosted 2FA provider would add SMS/push fallback, device
+management, and account-recovery flows for a lost authenticator — none of
+which make sense for a local, offline password vault (there's no "account"
+to recover into; losing the vault's TOTP secret alongside a forgotten
+master password means the vault is unrecoverable by design, the same as
+losing the master password alone). This trade-off is documented in the
+README's threat model rather than solved with recovery codes, which would
+themselves become a second secret to protect.

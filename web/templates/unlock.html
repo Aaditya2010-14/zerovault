@@ -3,6 +3,17 @@
 <div class="unlock-wrap">
   <div class="unlock-logo">ZeroVault</div>
   <div class="card">
+  {{if .Need2FA}}
+    <h1>Two-Factor Code</h1>
+    <p style="color: var(--text-dim); margin-top: -0.5rem;">Master password verified. Enter the current code from your authenticator app.</p>
+    <form method="post" action="/unlock/2fa">
+      <label for="code">6-digit code</label>
+      <input type="text" id="code" name="code" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" autofocus required maxlength="6">
+      <div style="margin-top: 1rem;">
+        <button type="submit">Verify</button>
+      </div>
+    </form>
+  {{else}}
     <h1>{{if .VaultExists}}Unlock Vault{{else}}Create Vault{{end}}</h1>
     <form method="post" action="/unlock">
       <label for="password">Master password</label>
@@ -21,6 +32,7 @@
         <button type="submit">{{if .VaultExists}}Unlock{{else}}Create Vault{{end}}</button>
       </div>
     </form>
+  {{end}}
   </div>
 </div>
 </div>

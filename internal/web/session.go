@@ -27,6 +27,12 @@ type session struct {
 	masterPw  string
 	vaultPath string
 	expiresAt time.Time
+
+	// pendingTOTPSecret holds a freshly generated (not-yet-confirmed) 2FA
+	// secret between GET /settings/2fa/setup and POST /settings/2fa/confirm
+	// — kept only in memory for this session, never persisted unless the
+	// user actually confirms a valid code.
+	pendingTOTPSecret string
 }
 
 type sessionStore struct {
@@ -125,6 +131,94 @@ func setSessionCookie(w http.ResponseWriter, token string) {
 func clearSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+	})
+}
+
+// --- Pending two-factor challenges ---
+//
+// When a vault has 2FA enabled, a correct master password isn't enough to
+// start a real session — it only proves the password was right. The
+// already-decrypted vault and password are held here, keyed by a short-
+// lived token in their own cookie, until a matching TOTP code arrives.
+// Nothing about this state is reachable without first passing the
+// password check, so a wrong password can never reveal whether 2FA is
+// enabled.
+
+const pendingCookieName = "zerovault_pending_2fa"
+const pendingTTL = 3 * time.Minute
+
+type pendingUnlock struct {
+	vault     *vault.Vault
+	masterPw  string
+	expiresAt time.Time
+}
+
+type pendingStore struct {
+	mu      sync.Mutex
+	pending map[string]*pendingUnlock
+}
+
+func newPendingStore() *pendingStore {
+	return &pendingStore{pending: make(map[string]*pendingUnlock)}
+}
+
+func (p *pendingStore) create(v *vault.Vault, masterPw string) (string, error) {
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", fmt.Errorf("web: failed to generate 2fa challenge token: %w", err)
+	}
+	token := hex.EncodeToString(tokenBytes)
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.pending[token] = &pendingUnlock{
+		vault:     v,
+		masterPw:  masterPw,
+		expiresAt: time.Now().Add(pendingTTL),
+	}
+	return token, nil
+}
+
+func (p *pendingStore) get(token string) (*pendingUnlock, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	pend, ok := p.pending[token]
+	if !ok {
+		return nil, false
+	}
+	if time.Now().After(pend.expiresAt) {
+		delete(p.pending, token)
+		return nil, false
+	}
+	return pend, true
+}
+
+func (p *pendingStore) delete(token string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	delete(p.pending, token)
+}
+
+func setPendingCookie(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     pendingCookieName,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   int(pendingTTL.Seconds()),
+	})
+}
+
+func clearPendingCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     pendingCookieName,
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,

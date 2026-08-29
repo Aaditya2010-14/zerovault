@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	vcrypto "zerovault/internal/crypto"
+	"zerovault/internal/totp"
 	"zerovault/internal/vault"
 )
 
@@ -59,6 +61,8 @@ func Run(args []string) int {
 		return cmdHealth(args[1:])
 	case "rekey":
 		return cmdRekey(args[1:])
+	case "2fa":
+		return cmd2FA(args[1:])
 	case "help", "-h", "--help":
 		printUsage()
 		return 0
@@ -73,7 +77,7 @@ func printUsage() {
 	printBold("ZeroVault — zero-dependency security toolkit")
 	fmt.Println(`
 Usage:
-  zerovault init                          create a new vault
+  zerovault init [--2fa]                  create a new vault (optionally with 2FA unlock)
   zerovault add [options] <name>          add a credential entry
   zerovault get [-copy] <name>            retrieve a credential entry
   zerovault list                          list all entry names
@@ -90,6 +94,8 @@ Usage:
   zerovault decrypt <file.enc> [-o out]   decrypt a ZeroVault-encrypted file
   zerovault health                        print a vault password health report
   zerovault rekey                         change the vault's master password
+  zerovault 2fa enable                    enable TOTP two-factor unlock for the vault
+  zerovault 2fa disable                   disable two-factor unlock (requires a valid code)
 
 Note: flags must come before the entry name.
 
@@ -109,6 +115,7 @@ Environment:
 
 func cmdInit(args []string) int {
 	fs := flag.NewFlagSet("init", flag.ExitOnError)
+	enable2FA := fs.Bool("2fa", false, "enable TOTP two-factor unlock for this vault")
 	fs.Parse(args)
 
 	path := DefaultVaultPath()
@@ -142,12 +149,23 @@ func cmdInit(args []string) int {
 	}
 
 	v := vault.New()
+	if *enable2FA {
+		secret, err := setup2FA()
+		if err != nil {
+			printError("%v", err)
+			return 1
+		}
+		v.Enable2FA(secret)
+	}
 	if err := vault.Save(path, pw1, v); err != nil {
 		printError("failed to create vault: %v", err)
 		return 1
 	}
 
 	printSuccess("vault created at %s", path)
+	if *enable2FA {
+		printSuccess("two-factor unlock enabled — future unlocks require your master password AND a TOTP code")
+	}
 	return 0
 }
 
@@ -342,6 +360,23 @@ func loadVaultInteractive() (*vault.Vault, string, string, int) {
 	if err != nil {
 		printError("%v", err)
 		return nil, "", "", 1
+	}
+
+	if v.TwoFAEnabled {
+		codeStr, err := ReadLine("TOTP code: ")
+		if err != nil {
+			printError("%v", err)
+			return nil, "", "", 1
+		}
+		key, err := totp.DecodeSecret(v.TwoFASecret)
+		if err != nil {
+			printError("%v", err)
+			return nil, "", "", 1
+		}
+		if !totp.Validate(key, codeStr, time.Now(), totp.DefaultPeriod, totp.DefaultDigits, 1) {
+			printError("invalid TOTP code")
+			return nil, "", "", 1
+		}
 	}
 
 	return v, path, pw, 0

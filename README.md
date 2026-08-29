@@ -26,8 +26,18 @@ Utilities).
   vault under a freshly derived key
 - Local-only web dashboard (`zerovault serve`) mirroring every CLI
   capability, plus an About page describing the project
-- Built-in penetration test suite (`zerovault attack`) — 12 real attacks
-  against the live crypto and web code, not simulated
+- Built-in penetration test suite (`zerovault attack`) — 13 real attacks
+  against the live crypto and web code, not simulated, exportable as a
+  self-contained HTML report (`--report`) or viewed on the dashboard's
+  Audit page
+- Offline breach-password check against 900+ known compromised passwords
+  (SHA-256 hash comparison, never plaintext), surfaced in the generator,
+  add/edit flow, and health dashboard
+- Clipboard auto-clear — copied passwords are wiped from the clipboard 10
+  seconds after being copied, from both the CLI and the web dashboard
+- Optional two-factor unlock for the vault itself (`zerovault init --2fa`
+  / `zerovault 2fa enable`) — TOTP secret stored inside the encrypted
+  vault, requiring both the master password and a live code to unlock
 
 Project overview page: `landing.html` in this repo, published at
 `https://Aaditya2010-14.github.io/zerovault/landing.html` once GitHub Pages
@@ -200,13 +210,15 @@ starts at 100% and loses points per finding — red below 50%, yellow below
 zerovault attack
 ```
 
-Runs 12 real attacks — dictionary brute force, GCM bit-flip/truncation
+Runs 13 real attacks — dictionary brute force, GCM bit-flip/truncation
 tampering, PBKDF2 timing analysis, nonce-reuse detection, encrypted-file
 tampering, XSS injection, CSRF, session hijacking attempts, security-header
-checks, path traversal, and TOTP brute force — against a disposable fixture
-vault and a real, locally-running copy of the dashboard. See `attacks/` for
-the source; each attack performs the real cryptographic operation or real
-HTTP request it claims to, not a simulated one.
+checks, path traversal, TOTP brute force, and a vault-2FA-unlock bypass
+attempt (password-only, password+wrong-code, password+correct-code) —
+against a disposable fixture vault and a real, locally-running copy of the
+dashboard. See `attacks/` for the source; each attack performs the real
+cryptographic operation or real HTTP request it claims to, not a
+simulated one.
 
 Add `--report <path>` to write a self-contained HTML report (results,
 per-test methodology, timings, pass/fail badges — no external assets, no
@@ -219,6 +231,29 @@ zerovault attack --report audit.html
 The dashboard also has an **Audit** page (`/audit`) showing the same
 results — the CLI and the web page share one in-memory report from the
 last run, so running the suite from either place updates both.
+
+### Two-factor vault unlock
+
+```bash
+zerovault init --2fa          # create a new vault with 2FA enabled
+zerovault 2fa enable          # add 2FA to an existing vault
+zerovault 2fa disable         # remove it (requires a valid code)
+```
+
+Both commands generate a fresh TOTP secret, show it as a terminal QR code
+(scan with any authenticator app) plus the raw secret for manual entry,
+and require you to type back one currently-valid code before the change
+takes effect — this catches a bad scan or transcription before it locks
+you out. The secret is stored as a field on the `Vault` struct itself
+(`internal/vault/vault.go`), so it's encrypted under the master password
+exactly like every entry — no separate secret store.
+
+Once enabled, every unlock — CLI (`get`, `add`, `list`, ...) and web —
+requires both the master password and a current code. The web dashboard's
+`/unlock` only reveals the second step *after* the password has already
+been verified, so a wrong password never leaks whether 2FA is on for that
+vault. Settings has a matching card to set up, or disable, 2FA for an
+already-unlocked vault.
 
 ## Threat model
 
@@ -263,6 +298,12 @@ last run, so running the suite from either place updates both.
 - **Clipboard auto-clear** — passwords are removed from the clipboard 10
   seconds after being copied (CLI `-copy` and every web UI copy button), to
   prevent accidental paste or clipboard scraping by another process.
+- **Vault unlock with a stolen/guessed master password alone** — when
+  two-factor unlock is enabled (`zerovault init --2fa` / `2fa enable`),
+  knowing the master password is not sufficient: a current TOTP code is
+  also required, both on the CLI and the web dashboard. The web unlock
+  flow verifies the password before ever revealing that a code is needed,
+  so a failed guess can't be used to fingerprint which vaults have 2FA on.
 
 ### What ZeroVault does NOT protect against (and why that's an acceptable
 hackathon-scope trade-off)
@@ -302,6 +343,19 @@ hackathon-scope trade-off)
   verifying service's own rate limiting (typically 3-5 attempts), which is
   outside ZeroVault's scope since ZeroVault is a code *generator*, not a
   verifying relying party.
+- **Vault-level 2FA is a login gate, not extra encryption strength.**
+  The TOTP secret is stored inside the same encrypted vault blob it
+  protects, so anyone who has actually broken the master-password
+  encryption (offline, given enough time/luck) can also read the 2FA
+  secret and generate valid codes — 2FA here does not add cryptographic
+  work to an offline attack the way a second independent key would. What
+  it *does* add: an online attacker who has obtained the master password
+  some other way (phishing, shoulder-surfing, a synced password manager
+  leak) still cannot unlock the vault without also having the physical
+  authenticator device. There are deliberately no recovery codes — a
+  recovery code would just be a second secret to protect, and losing both
+  the master password and the TOTP device makes the vault unrecoverable
+  by design, the same as losing the master password alone.
 - **A malicious or compromised build of ZeroVault itself.** As with any
   security tool, the user must trust the binary they run. The reproducible
   build section below lets anyone verify a given binary matches this

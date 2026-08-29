@@ -60,6 +60,39 @@
   </div>
 </div>
 
+<div class="card">
+  <div class="card-icon-header">
+    <span class="icon-badge icon-badge-accent">🔐</span>
+    <h2>Two-Factor Unlock</h2>
+  </div>
+  {{if .TwoFASetup}}
+    <p class="entry-sub">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.), then enter the current code to confirm.</p>
+    <div style="max-width: 200px; margin: 0.75rem 0;">{{.TwoFASetup.QRSVG}}</div>
+    <p class="entry-sub mono">Manual entry secret: {{.TwoFASetup.Secret}}</p>
+    <form method="post" action="/settings/2fa/confirm">
+      <label for="confirm_code">6-digit code</label>
+      <input type="text" id="confirm_code" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autofocus required>
+      <div style="margin-top: 1rem;">
+        <button type="submit">Confirm &amp; enable</button>
+      </div>
+    </form>
+  {{else if .TwoFAEnabled}}
+    <p class="entry-sub">Two-factor unlock is <strong>enabled</strong>. Unlocking this vault now requires your master password AND a current TOTP code.</p>
+    <form method="post" action="/settings/2fa/disable">
+      <label for="disable_code">Current 6-digit code (required to disable)</label>
+      <input type="text" id="disable_code" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" required>
+      <div style="margin-top: 1rem;">
+        <button type="submit" class="btn-danger">Disable two-factor unlock</button>
+      </div>
+    </form>
+  {{else}}
+    <p class="entry-sub">Add a second factor to vault unlock. Once enabled, unlocking requires both your master password and a current code from an authenticator app.</p>
+    <form method="post" action="/settings/2fa/setup">
+      <button type="submit">Set up two-factor unlock</button>
+    </form>
+  {{end}}
+</div>
+
 <div class="card danger-zone">
   <div class="card-icon-header">
     <span class="icon-badge icon-badge-danger">⚠</span>
