@@ -511,10 +511,24 @@ func crackTimeEstimate(combinations, guessesPerSecond float64) string {
 	case seconds < 1e6*year:
 		return fmt.Sprintf("~%.0f years", seconds/year)
 	case seconds < 1e12*year:
-		return fmt.Sprintf("~%.1f million years", seconds/year/1e6)
+		return fmt.Sprintf("~%s million years", scaleMagnitude(seconds/year/1e6))
 	default:
-		return fmt.Sprintf("~%.1f billion years", seconds/year/1e9)
+		return fmt.Sprintf("~%s billion years", scaleMagnitude(seconds/year/1e9))
 	}
+}
+
+// scaleMagnitude renders n as a fixed-point number, switching to
+// "mantissa x 10^exponent" scientific notation once n would otherwise print
+// with more than 9 digits before the decimal point — brute-force estimates
+// on a long, high-entropy password are astronomically large numbers that are
+// unreadable (and misleadingly precise-looking) spelled out in full.
+func scaleMagnitude(n float64) string {
+	if n < 1e9 {
+		return fmt.Sprintf("%.1f", n)
+	}
+	exp := int(math.Floor(math.Log10(n)))
+	mantissa := n / math.Pow(10, float64(exp))
+	return fmt.Sprintf("%.3f x 10^%d", mantissa, exp)
 }
 
 // --- TOTP ---
