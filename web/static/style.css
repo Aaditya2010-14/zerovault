@@ -1161,6 +1161,30 @@ details.collapsible .history-row + .history-row { border-top: 1px solid var(--bo
 
 .totp-card-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
 
+.totp-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.7rem;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), background 0.15s var(--ease), color 0.15s var(--ease);
+}
+.totp-action-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+
+.totp-action-btn-danger { color: var(--danger); border-color: var(--border-strong); }
+.totp-action-btn-danger:hover {
+  border-color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
 .totp-card.refreshed { animation: totp-flash 0.6s var(--ease); }
 @keyframes totp-flash {
   0% { box-shadow: var(--shadow); }
