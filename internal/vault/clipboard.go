@@ -10,27 +10,23 @@ import (
 
 // ClipboardClearDelay is how long a copied secret stays in the clipboard
 // before it is automatically overwritten with an empty string.
-const ClipboardClearDelay = 20 * time.Second
+const ClipboardClearDelay = 10 * time.Second
 
 // CopyToClipboard copies text to the OS clipboard by shelling out to the
 // platform's native clipboard utility (no clipboard package exists in the
-// Go standard library). It then schedules an automatic clear after
-// ClipboardClearDelay so a copied password doesn't linger indefinitely.
+// Go standard library). Callers that want the auto-clear-after-delay
+// behavior must call ClearClipboard themselves after ClipboardClearDelay —
+// deliberately not a background goroutine here, since a short-lived CLI
+// process would exit (killing the goroutine mid-flight) before a delayed
+// clear could ever run; see cli.printClipboardCountdown for the caller
+// that waits out the delay in the foreground before clearing.
 func CopyToClipboard(text string) error {
-	if err := setClipboard(text); err != nil {
-		return err
-	}
+	return setClipboard(text)
+}
 
-	go func() {
-		time.Sleep(ClipboardClearDelay)
-		// Best-effort: only clear if nothing else has changed since it's
-		// simplest to just overwrite unconditionally. A stale clear
-		// wiping a newer copy is an acceptable tradeoff for guaranteeing
-		// secrets don't linger.
-		_ = setClipboard("")
-	}()
-
-	return nil
+// ClearClipboard overwrites the clipboard with an empty string.
+func ClearClipboard() error {
+	return setClipboard("")
 }
 
 func setClipboard(text string) error {

@@ -21,7 +21,7 @@
       <span class="secret" data-secret="{{.Entry.Password}}">••••••••</span>
     </div>
     <button type="button" class="icon-btn eye-toggle" data-toggle-secret title="Show/hide" aria-label="Show password">{{template "eye-toggle-icon"}}</button>
-    <button type="button" class="icon-btn" data-copy="{{.Entry.Password}}" title="Copy password">{{template "copy-icon"}}</button>
+    <button type="button" class="icon-btn" data-copy="{{.Entry.Password}}" data-copy-secret title="Copy password">{{template "copy-icon"}}</button>
   </div>
 
   {{if .Entry.URL}}

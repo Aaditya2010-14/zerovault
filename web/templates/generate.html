@@ -52,7 +52,7 @@
         {{$n := len .Generated}}
         <div class="gen-output-box {{if le $n 20}}gen-output-xl{{else if le $n 40}}gen-output-lg{{else if le $n 60}}gen-output-md{{else}}gen-output-sm{{end}}"><span class="code mono">{{.Generated}}</span></div>
         <div class="actions-row" style="margin-top:0;">
-          <button type="button" class="btn-secondary" data-copy="{{.Generated}}">Copy</button>
+          <button type="button" class="btn-secondary" data-copy="{{.Generated}}" data-copy-secret>Copy</button>
           <span class="strength-badge strength-{{.StrengthClass}}">{{.Strength}} · {{printf "%.0f" .Bits}} bits</span>
         </div>
         <div style="margin-top: 1rem;">

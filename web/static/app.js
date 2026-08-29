@@ -151,7 +151,7 @@ document.addEventListener("click", function (e) {
 })();
 
 // Toast/snackbar: a single shared element, reused for every notification.
-function showToast(message) {
+function getToast() {
   var toast = document.getElementById("toast");
   if (!toast) {
     toast = document.createElement("div");
@@ -159,9 +159,18 @@ function showToast(message) {
     toast.className = "toast";
     document.body.appendChild(toast);
   }
-  toast.textContent = message;
+  return toast;
+}
+
+function clearToastTimers(toast) {
   clearTimeout(toast._hideTimer);
-  clearTimeout(toast._removeTimer);
+  clearInterval(toast._countdownTimer);
+}
+
+function showToast(message) {
+  var toast = getToast();
+  clearToastTimers(toast);
+  toast.textContent = message;
   // Force reflow so re-triggering the animation works on rapid repeat clicks.
   toast.classList.remove("toast-visible");
   void toast.offsetWidth;
@@ -171,13 +180,49 @@ function showToast(message) {
   }, 2000);
 }
 
+// Clipboard auto-clear: a copied secret only lives in the clipboard for
+// CLIPBOARD_CLEAR_SECONDS, matching the CLI's `-copy` behavior — the toast
+// stays up the whole time with a live countdown so it's obvious the
+// clipboard is about to be wiped, not just "copied and forgotten".
+var CLIPBOARD_CLEAR_SECONDS = 10;
+
+function showClipboardCountdownToast() {
+  var toast = getToast();
+  clearToastTimers(toast);
+  var remaining = CLIPBOARD_CLEAR_SECONDS;
+  toast.textContent = "Copied! Clears in " + remaining + "s";
+  toast.classList.remove("toast-visible");
+  void toast.offsetWidth;
+  toast.classList.add("toast-visible");
+
+  toast._countdownTimer = setInterval(function () {
+    remaining -= 1;
+    if (remaining > 0) {
+      toast.textContent = "Copied! Clears in " + remaining + "s";
+      return;
+    }
+    clearInterval(toast._countdownTimer);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText("").catch(function () {});
+    }
+    toast.textContent = "Clipboard cleared";
+    toast._hideTimer = setTimeout(function () {
+      toast.classList.remove("toast-visible");
+    }, 2000);
+  }, 1000);
+}
+
 // Copy-to-clipboard buttons: [data-copy] holds the text to copy. The button
 // itself never changes (icon-only, fixed size) — feedback is a toast
 // instead, plus a brief press effect so the click still feels acknowledged.
+// [data-copy-secret] additionally marks a button whose copied value is
+// sensitive (a password, not a username) — those get the auto-clearing
+// countdown toast instead of the plain "Copied" one.
 document.addEventListener("click", function (e) {
   var btn = e.target.closest("[data-copy]");
   if (!btn) return;
   var text = btn.getAttribute("data-copy");
+  var isSecret = btn.hasAttribute("data-copy-secret");
 
   btn.classList.add("btn-press");
   setTimeout(function () {
@@ -186,7 +231,11 @@ document.addEventListener("click", function (e) {
 
   if (!navigator.clipboard) return;
   navigator.clipboard.writeText(text).then(function () {
-    showToast("Copied to clipboard");
+    if (isSecret) {
+      showClipboardCountdownToast();
+    } else {
+      showToast("Copied to clipboard");
+    }
   });
 });
 

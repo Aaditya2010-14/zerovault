@@ -89,7 +89,7 @@ zerovault init                                    # create a new vault, set mast
 zerovault add github --username dev@x.com          # add an entry (prompts for password)
 zerovault add slack --generate --length 24          # add an entry with a generated password
 zerovault get github                                # print an entry
-zerovault get github -copy                          # copy password to clipboard (auto-clears in 20s)
+zerovault get github -copy                          # copy password to clipboard (auto-clears in 10s)
 zerovault list                                       # list all entry names
 zerovault delete github                              # remove an entry
 zerovault generate --length 32 --no-symbols          # generate a password without saving it
@@ -248,6 +248,9 @@ HTTP request it claims to, not a simulated one.
   file being cut short, is rejected before any plaintext is written —
   verified by `zerovault attack`'s file-tamper test and by
   `internal/fileenc`'s own test suite.
+- **Clipboard auto-clear** — passwords are removed from the clipboard 10
+  seconds after being copied (CLI `-copy` and every web UI copy button), to
+  prevent accidental paste or clipboard scraping by another process.
 
 ### What ZeroVault does NOT protect against (and why that's an acceptable
 hackathon-scope trade-off)
@@ -256,7 +259,7 @@ hackathon-scope trade-off)
   machine.** If the machine is already compromised at that level, no
   application-layer defense here can help — this is true of essentially
   every password manager. (Clipboard contents are cleared automatically
-  after 20 seconds to shrink this window.)
+  after 10 seconds to shrink this window.)
 - **Memory forensics.** The decrypted vault and master password live in
   process memory for the session's duration; a memory dump of a running
   `zerovault` process would expose them. Go's garbage collector doesn't

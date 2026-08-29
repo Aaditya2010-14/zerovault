@@ -233,7 +233,7 @@ func cmdGet(args []string) int {
 			printError("%v", err)
 			return 1
 		}
-		printSuccess("password for %q copied to clipboard (clears in %s)", name, vault.ClipboardClearDelay)
+		printClipboardCountdown()
 		return 0
 	}
 
