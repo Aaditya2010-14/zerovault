@@ -437,19 +437,30 @@ zerovault
 ## Reproducible build
 
 ```
-Build 1: b8c39e9902b425bf0feefa93996fe1e2e5555df68f665be141389dc029649b9d
-Build 2: b8c39e9902b425bf0feefa93996fe1e2e5555df68f665be141389dc029649b9d
+Build 1: 1c2b83848ef2a6a54edcd6a91013d2fee48b50aa242ef56d8333541571092de1
+Build 2: 1c2b83848ef2a6a54edcd6a91013d2fee48b50aa242ef56d8333541571092de1
 ```
 
 Hashes match — byte-identical output from two independent `go clean
 -cache && go build` runs. Verify it yourself with `certutil -hashfile
 zerovault SHA256` (Windows) or `sha256sum zerovault` (Linux/Mac).
 
-## Bonuses claimed
+## Hackathon Bonuses
 
-- **Package Killer (+3)** — zero third-party runtime dependencies, no
-  `golang.org/x/*`, empty `go.mod` require block.
-- **STDLIB Log (+3)** — see `STDLIB.md` for 20 documented stdlib
-  substitutions.
 - **Reproducible Build (+5)** — see above; two independent clean builds
-  produce byte-identical SHA-256 hashes.
+  (`go clean -cache && go build ./cmd/zerovault`) produce byte-identical
+  SHA-256 hashes:
+  `1c2b83848ef2a6a54edcd6a91013d2fee48b50aa242ef56d8333541571092de1`.
+- **Package Killer (+3)** — zero third-party runtime dependencies, no
+  `golang.org/x/*`, empty `go.mod` require block. Specific packages
+  replaced with stdlib-only equivalents:
+  - `truffleHog`/`detect-secrets` → hand-rolled secret scanner and git
+    history scanner (`internal/scanner`, `internal/gitscan`)
+  - `pquerna/otp` → hand-rolled TOTP/HOTP (`internal/totp`)
+  - `gorilla/csrf` → `net/http`'s built-in `CrossOriginProtection`
+  - `gin`/`echo` → `net/http` directly
+  - `fatih/color` → hand-rolled ANSI codes (`internal/cli/output.go`)
+  - `google/uuid` → stdlib `uuid`
+- **STDLIB Log (+3)** — 22 documented substitutions in `STDLIB.md`.
+- **Single File (+5)** — Not attempted — modular architecture chosen for
+  code quality and crypto isolation.
