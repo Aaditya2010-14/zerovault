@@ -18,9 +18,9 @@
   <div class="detail-row">
     <div class="detail-row-label">Password</div>
     <div class="detail-row-value mono">
-      <span class="secret" data-secret="{{.Entry.Password}}">••••••••</span>
+      <span class="secret" data-password="{{.Entry.Password}}">●●●●●●</span>
     </div>
-    <button type="button" class="icon-btn icon-btn-wide eye-toggle" data-toggle-secret title="Show/hide" aria-label="Show password">{{template "eye-toggle-icon-labeled"}}</button>
+    <button type="button" class="icon-btn icon-btn-wide eye-toggle" data-toggle-secret title="Show/hide" aria-label="Show password">👁 Show</button>
     <button type="button" class="icon-btn" data-copy="{{.Entry.Password}}" data-copy-secret title="Copy password">{{template "copy-icon"}}</button>
   </div>
 

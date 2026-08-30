@@ -240,25 +240,28 @@ document.addEventListener("click", function (e) {
 });
 
 // Show/Hide password toggle: the real value already sits in the page
-// (data-secret attribute, escaped by html/template) — toggling is a pure
+// (data-password attribute, escaped by html/template) — toggling is a pure
 // display change, never a separate fetch, so there's no extra network
 // request that could leak the password to a proxy or extension.
 document.addEventListener("click", function (e) {
   var btn = e.target.closest("[data-toggle-secret]");
   if (!btn) return;
-  var span = btn.previousElementSibling;
-  if (!span || !span.classList.contains("secret")) return;
+  var row = btn.closest(".detail-row");
+  var span = row && row.querySelector("[data-password]");
+  if (!span) return;
 
   var revealed = span.getAttribute("data-revealed") === "true";
   if (revealed) {
-    span.textContent = "••••••••";
+    span.textContent = "●●●●●●";
     span.setAttribute("data-revealed", "false");
     btn.classList.remove("revealed");
+    btn.textContent = "👁 Show";
     btn.setAttribute("aria-label", "Show password");
   } else {
-    span.textContent = span.getAttribute("data-secret");
+    span.textContent = span.getAttribute("data-password");
     span.setAttribute("data-revealed", "true");
     btn.classList.add("revealed");
+    btn.textContent = "🔒 Hide";
     btn.setAttribute("aria-label", "Hide password");
   }
 });
