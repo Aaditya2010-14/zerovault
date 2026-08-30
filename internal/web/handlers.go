@@ -944,7 +944,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 // stdlibSubstitutions is the count of third-party packages replaced with
 // standard-library equivalents, documented one-by-one in STDLIB.md.
-const stdlibSubstitutions = 20
+const stdlibSubstitutions = 22
 
 func (s *Server) handleAbout(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "about", struct {

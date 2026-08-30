@@ -3,7 +3,7 @@
 
   <section class="about-hero">
     <h1 class="about-hero-title">Security built from first principles</h1>
-    <p class="about-hero-sub">An encrypted password manager, TOTP authenticator, and secrets scanner — built entirely with Go's standard library. No frameworks. No packages. No compromise.</p>
+    <p class="about-hero-sub">An encrypted password manager, TOTP authenticator, secrets scanner, and web dashboard — built entirely with Go's standard library. No frameworks. No packages. No compromise.</p>
     <div class="about-stats">
       <div class="about-stat">
         <div class="about-stat-num">AES-256</div>
@@ -20,6 +20,10 @@
       <div class="about-stat">
         <div class="about-stat-num">{{.StdlibSubstitutions}}</div>
         <div class="about-stat-label">Stdlib Substitutions</div>
+      </div>
+      <div class="about-stat">
+        <div class="about-stat-num">13</div>
+        <div class="about-stat-label">Attack Tests</div>
       </div>
     </div>
   </section>
@@ -53,14 +57,129 @@
       </div>
     </div>
     <div class="about-card">
+      <div class="about-card-icon">🔲</div>
+      <h3>QR Code Generator</h3>
+      <p>Renders TOTP provisioning URIs as scannable QR codes — a full ISO/IEC 18004 encoder written from scratch, including Reed-Solomon error correction, with zero image or QR libraries.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">ISO/IEC 18004</span>
+        <span class="tech-tag">Reed-Solomon</span>
+        <span class="tech-tag">GF(256)</span>
+        <span class="tech-tag">SVG</span>
+      </div>
+    </div>
+    <div class="about-card">
       <div class="about-card-icon">🔍</div>
       <h3>Secrets Scanner</h3>
-      <p>Scan codebases for leaked API keys, tokens, and passwords. Pattern matching for known formats plus Shannon entropy analysis for unknown secrets.</p>
+      <p>Scan codebases for leaked API keys, tokens, and passwords. Pattern matching for known formats plus Shannon entropy analysis for unknown secrets — and it respects .gitignore, so files that won't ever reach the repo are never flagged.</p>
       <div class="tech-tags">
         <span class="tech-tag">regexp</span>
         <span class="tech-tag">math</span>
         <span class="tech-tag">filepath</span>
         <span class="tech-tag">entropy</span>
+        <span class="tech-tag">.gitignore-aware</span>
+      </div>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">🕵️</div>
+      <h3>Git History Scanner</h3>
+      <p>Walks a repository's commit history by reading .git/objects directly — no shelling out to git — to catch secrets that were committed and later deleted, which a plain directory scan can never see.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">compress/zlib</span>
+        <span class="tech-tag">encoding/hex</span>
+        <span class="tech-tag">regexp</span>
+        <span class="tech-tag">.git/objects</span>
+      </div>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">📄</div>
+      <h3>File Encryption</h3>
+      <p>Encrypts any file in 64KB chunks, each sealed under its own AES-GCM nonce with the chunk length and last-chunk flag bound into the tag, so truncation or tampering is rejected before any plaintext is written.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">crypto/aes</span>
+        <span class="tech-tag">crypto/cipher</span>
+        <span class="tech-tag">chunked GCM</span>
+        <span class="tech-tag">bufio</span>
+      </div>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">🩺</div>
+      <h3>Password Health &amp; Breach Detection</h3>
+      <p>Scores every vault entry's strength and checks it against an embedded, offline SHA-256 hash set of known breached passwords — no network call, no third-party API.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">crypto/sha256</span>
+        <span class="tech-tag">entropy</span>
+        <span class="tech-tag">offline hash set</span>
+      </div>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">🛡️</div>
+      <h3>Vault Two-Factor Unlock</h3>
+      <p>Optional TOTP-gated unlock: a correct master password alone isn't enough to open the vault when 2FA is enabled, on both the CLI and the web dashboard.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">crypto/subtle</span>
+        <span class="tech-tag">TOTP</span>
+        <span class="tech-tag">sessions</span>
+      </div>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">📋</div>
+      <h3>Clipboard Auto-Clear</h3>
+      <p>Copied passwords are wiped from the clipboard 10 seconds after copying, shrinking the window for accidental paste or another process reading the clipboard.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">os/exec</span>
+        <span class="tech-tag">runtime</span>
+        <span class="tech-tag">10s timer</span>
+      </div>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">🔄</div>
+      <h3>Master Password Rotation</h3>
+      <p>Re-encrypts the entire vault under a new master password and a fresh random salt, verifying the new password actually works before the rotation is considered complete.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">PBKDF2</span>
+        <span class="tech-tag">crypto/rand</span>
+        <span class="tech-tag">atomic rewrite</span>
+      </div>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">📊</div>
+      <h3>Audit Report Export</h3>
+      <p>Generates a self-contained HTML report of the full attack-suite run — inline CSS, no JavaScript, no external assets — that opens directly from disk or attaches to an email.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">html</span>
+        <span class="tech-tag">fmt</span>
+        <span class="tech-tag">self-contained HTML</span>
+      </div>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">🖥️</div>
+      <h3>Web Dashboard</h3>
+      <p>A local-only web UI for the vault, TOTP codes, the scanner, and file encryption — bound to loopback only, protected by CSRF checks, security headers, and HttpOnly session cookies.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">net/http</span>
+        <span class="tech-tag">html/template</span>
+        <span class="tech-tag">embed</span>
+      </div>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">🎬</div>
+      <h3>Demo Mode</h3>
+      <p>Builds a disposable demo project and git history seeded with realistic (fake) leaked secrets, then walks through every feature against it — nothing touches a real vault.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">os/exec</span>
+        <span class="tech-tag">context</span>
+        <span class="tech-tag">os/signal</span>
+      </div>
+    </div>
+    <div class="about-card">
+      <div class="about-card-icon">⚡</div>
+      <h3>Benchmarks</h3>
+      <p>Measures real throughput of PBKDF2 derivation, AES-GCM encryption, and TOTP generation on the current machine, timing repeated batches to work around timer-resolution limits on very fast operations.</p>
+      <div class="tech-tags">
+        <span class="tech-tag">crypto/rand</span>
+        <span class="tech-tag">time</span>
+        <span class="tech-tag">runtime</span>
+        <span class="tech-tag">encoding/json</span>
       </div>
     </div>
   </section>
@@ -94,7 +213,14 @@
       <div class="arch-row">
         <div class="arch-box">Vault</div>
         <div class="arch-box">TOTP</div>
+        <div class="arch-box">QR Code</div>
+        <div class="arch-box">File Encryption</div>
+      </div>
+      <div class="arch-row">
         <div class="arch-box">Scanner</div>
+        <div class="arch-box">Git Scanner</div>
+        <div class="arch-box">Health</div>
+        <div class="arch-box">Web Dashboard</div>
       </div>
       <div class="arch-arrow">↓</div>
       <div class="arch-box arch-core">
@@ -104,7 +230,7 @@
       <div class="arch-arrow">↓</div>
       <div class="arch-box arch-stdlib">
         Go Standard Library
-        <div class="arch-box-sub">crypto/* | encoding/json | uuid | net/http | html/template</div>
+        <div class="arch-box-sub">crypto/* | encoding/json/v2 | uuid | net/http | html/template</div>
       </div>
     </div>
     <div class="arch-decisions">
@@ -131,20 +257,29 @@
     <div class="threat-card threat-good">
       <h3>PROTECTED</h3>
       <ul class="threat-list">
-        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Vault access</strong> — AES-256-GCM makes the file unreadable without the master password</li>
-        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Brute force</strong> — PBKDF2 with 100K iterations limits attempts to ~3-5/second</li>
-        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Tampering</strong> — GCM authentication tag detects any modification</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Offline vault theft</strong> — PBKDF2-HMAC-SHA256 at 100,000 iterations makes each password guess measurably slow</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Vault tampering</strong> — GCM's authentication tag detects any bit flip, truncation, or byte injection, rejecting it outright</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Nonce reuse</strong> — every save draws a fresh 12-byte nonce from crypto/rand, never derived or counted</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>XSS in the dashboard</strong> — all user data renders through html/template, auto-escaped by output context</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>CSRF against the dashboard</strong> — every mutating route rejects cross-origin requests via net/http's CrossOriginProtection</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Session hijacking</strong> — HttpOnly, SameSite=Strict cookies with a 15-minute sliding expiry</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Clickjacking &amp; header-based attacks</strong> — X-Frame-Options, CSP, and no-store caching on every response</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Unthrottled login guessing</strong> — the web unlock form adds delays and a lockout on top of PBKDF2's own cost</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Tampered encrypted files</strong> — each 64KB chunk is independently authenticated, so cuts or edits are rejected</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Clipboard scraping</strong> — copied passwords are cleared from the clipboard automatically after 10 seconds</li>
         <li><span class="threat-mark threat-mark-good">✓</span> <strong>Weak passwords</strong> — crypto/rand generates unpredictable passwords</li>
-        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Timing attacks</strong> — constant-time comparison via crypto/subtle</li>
+        <li><span class="threat-mark threat-mark-good">✓</span> <strong>Timing attacks on 2FA</strong> — constant-time comparison via crypto/subtle</li>
       </ul>
     </div>
     <div class="threat-card threat-bad">
       <h3>NOT PROTECTED</h3>
       <ul class="threat-list">
-        <li><span class="threat-mark threat-mark-bad">✗</span> <strong>Keyloggers</strong> — no application can defend against OS-level input capture</li>
-        <li><span class="threat-mark threat-mark-bad">✗</span> <strong>Memory forensics</strong> — plaintext exists in process memory while unlocked</li>
-        <li><span class="threat-mark threat-mark-bad">✗</span> <strong>Password reuse</strong> — a leaked master password compromises the vault</li>
-        <li><span class="threat-mark threat-mark-bad">✗</span> <strong>GPU attacks</strong> — PBKDF2 is less resistant than argon2 (not in Go stdlib)</li>
+        <li><span class="threat-mark threat-mark-bad">✗</span> <strong>Keyloggers &amp; screen capture</strong> — no application can defend against OS-level input capture</li>
+        <li><span class="threat-mark threat-mark-bad">✗</span> <strong>Memory forensics</strong> — plaintext exists in process memory while the vault is unlocked</li>
+        <li><span class="threat-mark threat-mark-bad">✗</span> <strong>Password reuse</strong> — a leaked master password compromises the vault wherever it's reused</li>
+        <li><span class="threat-mark threat-mark-bad">✗</span> <strong>GPU/ASIC attacks</strong> — PBKDF2 is less resistant than Argon2, which isn't in Go stdlib</li>
+        <li><span class="threat-mark threat-mark-bad">✗</span> <strong>Network eavesdropping</strong> — the dashboard is loopback-only, but the connection itself is plain HTTP, not TLS</li>
+        <li><span class="threat-mark threat-mark-bad">✗</span> <strong>TOTP code brute force</strong> — a 6-digit code space is exhaustible in under a second; real protection is the relying party's rate limit</li>
       </ul>
     </div>
   </section>
