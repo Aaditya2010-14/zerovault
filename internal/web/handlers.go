@@ -87,7 +87,7 @@ func (s *Server) handleUnlockSubmit(w http.ResponseWriter, r *http.Request) {
 		loaded, err := vault.Load(s.vaultPath, password)
 		if err != nil {
 			s.unlockLimit.recordFailure()
-			s.renderUnlockError(w, "incorrect master password")
+			s.renderUnlockError(w, "Incorrect master password")
 			return
 		}
 		s.unlockLimit.recordSuccess()
