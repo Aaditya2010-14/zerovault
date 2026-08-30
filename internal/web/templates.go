@@ -16,10 +16,17 @@ var pages = []string{"unlock", "dashboard", "add", "edit", "view", "totp", "gene
 // layout.html's "layout" definition and that page's "content" definition.
 type templateSet map[string]*template.Template
 
+// templateFuncs are available to every page template. demoMode is read at
+// render time (not bound to a page struct field) so the banner can appear
+// on every page — including unlock, before any session-scoped data exists.
+var templateFuncs = template.FuncMap{
+	"demoMode": func() bool { return DemoMode },
+}
+
 func loadTemplates() (templateSet, error) {
 	set := make(templateSet, len(pages))
 	for _, page := range pages {
-		tmpl, err := template.ParseFS(zerovault.TemplateFiles,
+		tmpl, err := template.New(page).Funcs(templateFuncs).ParseFS(zerovault.TemplateFiles,
 			"web/templates/layout.html",
 			"web/templates/partials.html",
 			fmt.Sprintf("web/templates/%s.html", page),

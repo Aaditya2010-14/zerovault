@@ -7,7 +7,8 @@
   <title>{{.Title}} — ZeroVault</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body class="{{if demoMode}}demo-mode{{end}}">
+  <div class="demo-banner">DEMO MODE — using temporary vault with preset data</div>
   <nav>
     <span class="brand">ZeroVault</span>
     {{if .Authenticated}}

@@ -1474,3 +1474,41 @@ input[type="range"]::-moz-range-thumb {
   transform: translateX(-50%) translateY(0);
 }
 
+.demo-banner {
+  display: none;
+}
+
+body.demo-mode {
+  --demo-banner-height: 34px;
+}
+
+body.demo-mode .demo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--demo-banner-height);
+  z-index: 30;
+  background: var(--warning-soft);
+  color: #92400E;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+body.demo-mode nav {
+  top: var(--demo-banner-height);
+}
+
+body.demo-mode main {
+  padding-top: calc(var(--nav-height) + var(--demo-banner-height) + 2.5rem);
+}
+
+body.demo-mode:has(.unlock-wrap) main {
+  padding-top: calc(var(--demo-banner-height) + 1.5rem);
+}
+

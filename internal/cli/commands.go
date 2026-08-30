@@ -94,6 +94,7 @@ Usage:
   zerovault scan --git <repo> [-depth N]  scan git commit history for leaked secrets
   zerovault serve [-addr host:port]       start the web dashboard
   zerovault demo [-addr host:port]        guided demo: sample vault, fake leaked secrets, dashboard
+  zerovault demo --cleanup                remove all demo data and reset the vault to its pre-demo state
   zerovault bench [-json]                 run performance benchmarks (crypto, scanner, vault)
   zerovault attack                        run the built-in security audit (penetration test suite)
   zerovault encrypt <file> [-o out.enc]   encrypt any file with AES-256-GCM

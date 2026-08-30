@@ -36,7 +36,12 @@ const (
 func cmdDemo(args []string) int {
 	fs := flag.NewFlagSet("demo", flag.ExitOnError)
 	addr := fs.String("addr", "127.0.0.1:8787", "address for the demo dashboard")
+	doCleanup := fs.Bool("cleanup", false, "remove all demo data and reset the vault to its pre-demo state")
 	fs.Parse(args)
+
+	if *doCleanup {
+		return cmdDemoCleanup()
+	}
 
 	host, _, err := net.SplitHostPort(*addr)
 	if err != nil {
@@ -65,18 +70,26 @@ func cmdDemo(args []string) int {
 		printError("demo setup failed: %v", err)
 		return 1
 	}
+	if err := os.WriteFile(demoMarkerPath(vaultPath), []byte(""), 0o644); err != nil {
+		printError("demo setup failed: %v", err)
+		os.Remove(vaultPath)
+		return 1
+	}
 	if err := setupDemoProject(demoProjectDir); err != nil {
 		printError("demo project setup failed: %v", err)
 		os.Remove(vaultPath)
+		os.Remove(demoMarkerPath(vaultPath))
 		return 1
 	}
 
 	cleanup := func() {
 		os.Remove(vaultPath)
+		os.Remove(demoMarkerPath(vaultPath))
 		os.RemoveAll(demoProjectDir)
 	}
 
 	wireAuditRunner()
+	web.DemoMode = true
 	srv, err := web.NewServer(vaultPath)
 	if err != nil {
 		printError("failed to initialize web server: %v", err)
@@ -122,6 +135,50 @@ func cmdDemo(args []string) int {
 		printSuccess("demo data removed: %s and %s/ deleted", vaultPath, demoProjectDir)
 		return 0
 	}
+}
+
+// demoMarkerPath returns the sentinel file that marks vaultPath as
+// demo-created data. cmdDemoCleanup only ever deletes a vault guarded by
+// this marker, so it can never be tricked into wiping a real vault that
+// happens to live at the same default path.
+func demoMarkerPath(vaultPath string) string {
+	return vaultPath + ".demo-marker"
+}
+
+// cmdDemoCleanup implements `zerovault demo --cleanup`: removes the demo
+// vault and demo-project/ directory left behind by a demo run that wasn't
+// (or couldn't be) shut down cleanly with Ctrl+C.
+func cmdDemoCleanup() int {
+	vaultPath := DefaultVaultPath()
+	markerPath := demoMarkerPath(vaultPath)
+
+	_, markerErr := os.Stat(markerPath)
+	hasDemoVault := markerErr == nil && vault.Exists(vaultPath)
+
+	_, projectErr := os.Stat(demoProjectDir)
+	hasDemoProject := projectErr == nil
+
+	if !hasDemoVault && !hasDemoProject {
+		printInfo("No demo data found — nothing to clean up.")
+		return 0
+	}
+
+	if hasDemoVault {
+		if err := os.Remove(vaultPath); err != nil {
+			printError("failed to remove demo vault: %v", err)
+			return 1
+		}
+		os.Remove(markerPath)
+	}
+	if hasDemoProject {
+		if err := os.RemoveAll(demoProjectDir); err != nil {
+			printError("failed to remove %s: %v", demoProjectDir, err)
+			return 1
+		}
+	}
+
+	printSuccess("Demo data cleaned up. Vault reset to normal.")
+	return 0
 }
 
 // buildDemoVault creates a fresh vault at path, saved under demoPassword,

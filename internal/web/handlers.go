@@ -987,6 +987,11 @@ type AuditSnapshot struct {
 // cli.cmdServe before the server starts handling requests.
 var AuditRunner func() (AuditSnapshot, error)
 
+// DemoMode controls whether every page renders the "DEMO MODE" banner. Set
+// by cli.cmdDemo before the server starts handling requests; left false
+// (its zero value) for a normal 'zerovault serve'.
+var DemoMode bool
+
 // AuditLastResult returns the most recently completed run, if any. Set by
 // cli.cmdServe before the server starts handling requests.
 var AuditLastResult func() (AuditSnapshot, bool)
