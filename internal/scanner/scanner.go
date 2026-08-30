@@ -81,15 +81,30 @@ func ScanDir(root string, opts Options) ([]Finding, error) {
 		minEntropy = MinEntropy
 	}
 
+	// A gitignored file won't be in the repo, so it shouldn't be scanned or
+	// flagged. LoadGitignoreMatcher never fails the whole scan on error —
+	// a repo with an unreadable .gitignore just gets treated as having none.
+	gim, _ := LoadGitignoreMatcher(root)
+
 	var findings []Finding
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
+		relPath, relErr := filepath.Rel(root, path)
+		if relErr != nil {
+			relPath = path
+		}
 		if d.IsDir() {
 			if skipDirs[d.Name()] {
 				return filepath.SkipDir
 			}
+			if relPath != "." && gim.Matches(relPath, true) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if gim.Matches(relPath, false) {
 			return nil
 		}
 		if binaryExtensions[strings.ToLower(filepath.Ext(path))] {

@@ -125,6 +125,15 @@ func ScanRepo(repoPath string, maxCommits int, minEntropy float64) (Report, erro
 		}
 	}
 
+	// The live, on-disk .gitignore governs the working tree, so a path
+	// that's currently gitignored should be filtered out of findings even
+	// though it's a real historical blob — it's the "working-tree mode"
+	// counterpart to the file scanner's gitignore skip. Paths that are gone
+	// from HEAD entirely (headPaths[path] == false) are exactly the
+	// deleted-secret case this scanner exists to catch, so they're left
+	// alone regardless of the current .gitignore.
+	gim, _ := scanner.LoadGitignoreMatcher(repoPath)
+
 	report := Report{CommitsScanned: len(commits), Truncated: truncated}
 	for _, c := range commits {
 		entries, err := flattenTree(r, c.Tree, "")
@@ -132,6 +141,9 @@ func ScanRepo(repoPath string, maxCommits int, minEntropy float64) (Report, erro
 			continue // a corrupt/missing subtree shouldn't abort the whole scan
 		}
 		for _, e := range entries {
+			if headPaths[e.path] && gim.Matches(e.path, false) {
+				continue // currently gitignored — won't be in the repo going forward
+			}
 			if r.scannedBlobs[e.sha] {
 				continue // identical content already scanned under another commit/path
 			}
