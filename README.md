@@ -55,6 +55,27 @@ That's it — one command, one binary, no external files needed at runtime
 
 Go version: **1.27.0**, pinned in `go.mod`.
 
+## Demo Mode
+
+Try ZeroVault in 10 seconds with pre-loaded test data:
+
+```bash
+go build -o zerovault ./cmd/zerovault
+./zerovault demo
+```
+
+This creates a temporary vault (password: `demo2026`) with sample entries, TOTP secrets, and a test project with planted secrets for the scanner. Open http://127.0.0.1:8787 in your browser.
+
+Try these commands in a second terminal:
+- `zerovault get github` — retrieve a password
+- `zerovault health` — see breach detection
+- `zerovault totp get github-2fa` — compare with Google Authenticator
+- `zerovault scan demo-project/` — find leaked secrets
+- `zerovault scan --git demo-project/` — find deleted secrets in git history
+- `zerovault attack --report audit.html` — run full security audit
+
+To clean up: `zerovault demo --cleanup` or press Ctrl+C.
+
 ## Architecture
 
 ```
